@@ -358,7 +358,6 @@
                     <label>施工内容及完成情况（可拍照/相册选图）</label>
                     <textarea id="workContent" placeholder="填写今日施工内容、完成工程量、进度情况等..."></textarea>
                     <div class="photo-box">
-                        <!--去掉capture属性，实现：弹窗二选一：拍照 / 相册选择图片-->
                         <input type="file" id="photoInput" accept="image/*" style="display:none">
                         <button class="photo-btn" onclick="document.getElementById('photoInput').click()">📷 拍照 / 从相册选择照片</button>
                         <div class="photo-list" id="photoList"></div>
@@ -405,20 +404,24 @@
                 <div id="projectManageBox"></div>
             </div>
             <div class="form-card">
-                <div class="title-row">默认信息设置</div>
+                <div class="title-row">项目信息设置（先选项目再编辑）</div>
+                <div class="row">
+                    <label>选择项目</label>
+                    <select id="setProjectSel"></select>
+                </div>
                 <div class="row">
                     <label>承包单位</label>
-                    <input type="text" id="setContractor" placeholder="默认承包单位">
+                    <input type="text" id="setContractor" placeholder="该项目承包单位">
                 </div>
                 <div class="row">
                     <label>监理单位</label>
-                    <input type="text" id="setSupervisor" placeholder="默认监理单位">
+                    <input type="text" id="setSupervisor" placeholder="该项目监理单位">
                 </div>
                 <div class="row">
                     <label>合同号</label>
-                    <input type="text" id="setContractNo" placeholder="默认合同号">
+                    <input type="text" id="setContractNo" placeholder="该项目合同号">
                 </div>
-                <button class="add-row" style="width:100%;padding:12px;background:#1a73e8;color:#fff;border:none;border-radius:6px;font-size:15px;margin-top:10px;" onclick="saveDefaultInfo()">保存默认信息</button>
+                <button class="add-row" style="width:100%;padding:12px;background:#1a73e8;color:#fff;border:none;border-radius:6px;font-size:15px;margin-top:10px;" onclick="saveProjectInfo()">保存当前项目信息</button>
             </div>
         </div>
     </div>
@@ -438,33 +441,109 @@
     <div id="printWrap" style="display:none;"></div>
 
 <script>
-// ========== 项目管理 ==========
+// ========== 项目管理：每个项目是对象 {name, contractor, supervisor, contractNo} ==========
 function getProjectList(){
     const raw = localStorage.getItem('roadProjectList');
-    return raw ? JSON.parse(raw) : ["默认项目"];
+    if(raw){
+        const arr = JSON.parse(raw);
+        //兼容老版本：如果是字符串数组自动升级为对象数组
+        if(arr.length>0 && typeof arr[0]==='string'){
+            return arr.map(n=>({name:n, contractor:'', supervisor:'', contractNo:''}));
+        }
+        return arr;
+    }
+    return [{name:"默认项目", contractor:'', supervisor:'', contractNo:''}];
 }
 function saveProjectList(arr){
     localStorage.setItem('roadProjectList', JSON.stringify(arr));
 }
+// 根据项目名称查找项目对象
+function findProject(name){
+    return getProjectList().find(p=>p.name === name);
+}
+// 渲染【记日志页】项目下拉
 function renderProjectSelect(){
     const sel = document.getElementById('project');
     const list = getProjectList();
     sel.innerHTML = "";
-    list.forEach(name=>{
+    list.forEach(p=>{
         const opt = document.createElement('option');
-        opt.innerText = name;
-        opt.value = name;
+        opt.innerText = p.name;
+        opt.value = p.name;
         sel.appendChild(opt);
     })
+    bindProjectChange();
+    fillByProject(sel.value);
 }
+// 渲染【设置页】项目下拉
+function renderSetProjectSel(){
+    const sel = document.getElementById('setProjectSel');
+    const list = getProjectList();
+    sel.innerHTML = "";
+    list.forEach(p=>{
+        const opt = document.createElement('option');
+        opt.innerText = p.name;
+        opt.value = p.name;
+        sel.appendChild(opt);
+    })
+    bindSetProjectChange();
+    fillSetFormByProject(sel.value);
+}
+// 记日志页切换项目，自动回填承包/监理/合同号
+function bindProjectChange(){
+    const sel = document.getElementById('project');
+    sel.onchange = function(){
+        fillByProject(this.value);
+    }
+}
+function fillByProject(projName){
+    const p = findProject(projName);
+    if(p){
+        document.getElementById('contractor').value = p.contractor;
+        document.getElementById('supervisor').value = p.supervisor;
+        document.getElementById('contractNo').value = p.contractNo;
+    }
+}
+// 设置页切换项目，加载该项目信息到输入框
+function bindSetProjectChange(){
+    const sel = document.getElementById('setProjectSel');
+    sel.onchange = function(){
+        fillSetFormByProject(this.value);
+    }
+}
+function fillSetFormByProject(projName){
+    const p = findProject(projName);
+    if(p){
+        document.getElementById('setContractor').value = p.contractor;
+        document.getElementById('setSupervisor').value = p.supervisor;
+        document.getElementById('setContractNo').value = p.contractNo;
+    }
+}
+// 设置页保存当前选中项目的信息
+function saveProjectInfo(){
+    const selName = document.getElementById('setProjectSel').value;
+    const arr = getProjectList();
+    const target = arr.find(p=>p.name === selName);
+    if(target){
+        target.contractor = document.getElementById('setContractor').value;
+        target.supervisor = document.getElementById('setSupervisor').value;
+        target.contractNo = document.getElementById('setContractNo').value;
+    }
+    saveProjectList(arr);
+    //刷新记日志下拉和当前表单
+    renderProjectSelect();
+    alert("✅该项目信息已保存！切换项目会自动带出");
+}
+// 添加新项目
 document.getElementById('addProjectBtn').onclick = function(){
     const val = document.getElementById('newProjectInput').value.trim();
     if(!val){ alert("项目名称不能为空"); return; }
     const arr = getProjectList();
-    if(arr.includes(val)){ alert("该项目已存在"); return; }
-    arr.push(val);
+    if(arr.some(p=>p.name === val)){ alert("该项目已存在"); return; }
+    arr.push({name:val, contractor:'', supervisor:'', contractNo:''});
     saveProjectList(arr);
     renderProjectSelect();
+    renderSetProjectSel();
     document.getElementById('newProjectInput').value = "";
 }
 
@@ -515,29 +594,6 @@ const m = String(today.getMonth()+1).padStart(2,'0');
 const d = String(today.getDate()).padStart(2,'0');
 document.getElementById('workDate').value = `${y}-${m}-${d}`;
 
-// ========== 默认信息加载 ==========
-function loadDefaultInfo(){
-    const info = JSON.parse(localStorage.getItem('roadDefaultInfo') || '{}');
-    if(info.contractor) document.getElementById('setContractor').value = info.contractor;
-    if(info.supervisor) document.getElementById('setSupervisor').value = info.supervisor;
-    if(info.contractNo) document.getElementById('setContractNo').value = info.contractNo;
-    if(info.contractor) document.getElementById('contractor').value = info.contractor;
-    if(info.supervisor) document.getElementById('supervisor').value = info.supervisor;
-    if(info.contractNo) document.getElementById('contractNo').value = info.contractNo;
-}
-function saveDefaultInfo(){
-    const info = {
-        contractor: document.getElementById('setContractor').value,
-        supervisor: document.getElementById('setSupervisor').value,
-        contractNo: document.getElementById('setContractNo').value
-    };
-    localStorage.setItem('roadDefaultInfo', JSON.stringify(info));
-    document.getElementById('contractor').value = info.contractor;
-    document.getElementById('supervisor').value = info.supervisor;
-    document.getElementById('contractNo').value = info.contractNo;
-    alert("默认信息已保存！");
-}
-
 // ========== Tab切换 ==========
 const tabs = document.querySelectorAll('.tab');
 tabs.forEach(tab=>{
@@ -548,7 +604,10 @@ tabs.forEach(tab=>{
         document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
         document.getElementById(targetId).classList.add('active');
         if(targetId === 'page-list') renderList();
-        if(targetId === 'page-set') renderProjectManage();
+        if(targetId === 'page-set') {
+            renderProjectManage();
+            renderSetProjectSel();
+        }
     }
 })
 
@@ -593,7 +652,7 @@ document.getElementById('saveLogBtn').onclick = function(){
     logs.unshift(log);
     saveLogs(logs);
     alert('✅日志保存成功！');
-    //清空表单，保留日期和默认单位信息
+    //清空表单，保留日期
     photos = []; renderPhotos();
     document.getElementById('workContent').value = '';
     document.getElementById('resource').value = '';
@@ -602,9 +661,10 @@ document.getElementById('saveLogBtn').onclick = function(){
     document.getElementById('weather').value = '';
     document.getElementById('tempHigh').value = '';
     document.getElementById('tempLow').value = '';
+    fillByProject(document.getElementById('project').value);
 }
 
-// ========== 单条A4浏览器打印功能（可选同WiFi无线打印机）==========
+// ========== 单条A4浏览器打印功能 ==========
 function printItem(logItem){
     let imgHtml = "";
     if(logItem.photos && logItem.photos.length>0){
@@ -692,7 +752,6 @@ ${imgHtml}
 function exportAllBackup(){
     const allData = {
         projectList:getProjectList(),
-        defaultInfo:JSON.parse(localStorage.getItem('roadDefaultInfo')||'{}'),
         logs:getLogs()
     };
     const blob = new Blob([JSON.stringify(allData,null,2)],{type:"application/json"});
@@ -716,10 +775,10 @@ document.getElementById('importFileInput').onchange=function(e){
         try{
             const data=JSON.parse(ev.target.result);
             if(data.projectList) saveProjectList(data.projectList);
-            if(data.defaultInfo) localStorage.setItem('roadDefaultInfo',JSON.stringify(data.defaultInfo));
             if(data.logs) saveLogs(data.logs);
             renderProjectSelect();
-            loadDefaultInfo();
+            renderSetProjectSel();
+            renderProjectManage();
             alert("✅导入备份成功！");
         }catch(err){
             alert("文件格式错误，不是备份json");
@@ -791,11 +850,11 @@ function renderProjectManage(){
     const box = document.getElementById('projectManageBox');
     const list = getProjectList();
     let html = "";
-    list.forEach(name=>{
+    list.forEach(p=>{
         html += `
         <div class="log-card" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
-            <span style="font-size:14px;">${name}</span>
-            <button class="del-btn" data-pro="${name}" style="margin-top:0;">删除</button>
+            <span style="font-size:14px;">${p.name}</span>
+            <button class="del-btn" data-pro="${p.name}" style="margin-top:0;">删除</button>
         </div>
         `
     })
@@ -805,9 +864,10 @@ function renderProjectManage(){
             const pName = btn.dataset.pro;
             if(pName === "默认项目"){ alert("默认项目不能删除"); return; }
             if(!confirm(`确定删除项目「${pName}」吗？`)) return;
-            let arr = getProjectList().filter(x=>x!==pName);
+            let arr = getProjectList().filter(x=>x.name!==pName);
             saveProjectList(arr);
             renderProjectSelect();
+            renderSetProjectSel();
             renderProjectManage();
         }
     })
@@ -815,7 +875,6 @@ function renderProjectManage(){
 
 // 初始化
 renderProjectSelect();
-loadDefaultInfo();
 //默认打开记日志tab
 document.querySelector('[data-page="page-form"]').classList.add('active');
 document.querySelector('.tab[data-page="page-form"]').classList.add('active');
