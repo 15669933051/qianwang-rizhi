@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>公路巡查日志</title>
+    <title>施工日志</title>
     <style>
         *{
             box-sizing: border-box;
@@ -12,57 +12,120 @@
             font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", sans-serif;
         }
         body{
-            background:#f7f8fa;
+            background:#f0f2f5;
             padding-bottom:70px;
         }
         .header{
-            background:#2478e0;
+            background:#1a73e8;
             color:#fff;
             text-align:center;
-            padding:18px 0;
-            font-size:20px;
-            font-weight:500;
+            padding:14px 10px;
+            font-size:17px;
+            font-weight:600;
+            line-height:1.4;
         }
         .wrap{
-            padding:16px;
+            padding:12px;
         }
-        .item{
-            margin-bottom:18px;
-        }
-        .label-title{
-            font-size:16px;
-            color:#333;
-            margin-bottom:8px;
-            display:block;
-        }
-        input, textarea, select{
-            width:100%;
-            border:1px solid #cccccc;
-            border-radius:8px;
-            padding:14px 12px;
-            font-size:17px;
+        .form-card{
             background:#fff;
+            border-radius:8px;
+            padding:12px;
+            margin-bottom:12px;
         }
-        textarea{
-            min-height:100px;
+        .row{
+            display:flex;
+            gap:8px;
+            margin-bottom:10px;
+            align-items:center;
+        }
+        .row label{
+            width:80px;
+            font-size:14px;
+            color:#333;
+            flex-shrink:0;
+        }
+        .row input, .row select{
+            flex:1;
+            border:1px solid #ddd;
+            border-radius:6px;
+            padding:10px 8px;
+            font-size:15px;
+        }
+        .full-row{
+            margin-bottom:10px;
+        }
+        .full-row label{
+            display:block;
+            font-size:14px;
+            color:#333;
+            margin-bottom:6px;
+            font-weight:500;
+        }
+        .full-row textarea{
+            width:100%;
+            border:1px solid #ddd;
+            border-radius:6px;
+            padding:10px;
+            font-size:15px;
+            min-height:80px;
             resize:vertical;
         }
-        .check-row{
+        .title-row{
+            background:#f5f7fa;
+            padding:8px 10px;
+            border-radius:6px;
+            font-size:14px;
+            font-weight:600;
+            color:#1a73e8;
+            margin-bottom:10px;
+        }
+        /* 拍照区域 */
+        .photo-box{
+            margin-top:8px;
+        }
+        .photo-btn{
+            width:100%;
+            padding:12px;
+            background:#e8f0fe;
+            border:1px dashed #1a73e8;
+            border-radius:6px;
+            color:#1a73e8;
+            font-size:15px;
+            text-align:center;
+        }
+        .photo-list{
             display:flex;
-            gap:22px;
             flex-wrap:wrap;
-            padding:8px 0;
+            gap:8px;
+            margin-top:8px;
         }
-        .check-item{
-            display:flex;
-            align-items:center;
-            gap:6px;
-            font-size:17px;
+        .photo-item{
+            width:80px;
+            height:80px;
+            border-radius:6px;
+            overflow:hidden;
+            position:relative;
         }
-        .check-item input{
-            width:auto;
-            transform:scale(1.15);
+        .photo-item img{
+            width:100%;
+            height:100%;
+            object-fit:cover;
         }
+        .photo-del{
+            position:absolute;
+            top:2px;
+            right:2px;
+            width:20px;
+            height:20px;
+            background:rgba(0,0,0,0.6);
+            color:#fff;
+            border-radius:50%;
+            font-size:12px;
+            text-align:center;
+            line-height:20px;
+        }
+        /* 底部导航 */
         .tab-bar{
             position:fixed;
             bottom:0;
@@ -75,12 +138,13 @@
         .tab{
             flex:1;
             text-align:center;
-            padding:14px 0;
-            font-size:16px;
+            padding:12px 0;
+            font-size:15px;
             color:#666;
         }
         .tab.active{
-            color:#2478e0;
+            color:#1a73e8;
+            font-weight:500;
         }
         .page{
             display:none;
@@ -88,109 +152,213 @@
         .page.active{
             display:block;
         }
+        /* 日志列表 */
         .log-card{
             background:#fff;
             border-radius:8px;
-            padding:14px;
-            margin-bottom:12px;
+            padding:12px;
+            margin-bottom:10px;
+        }
+        .log-card h4{
+            font-size:15px;
+            color:#333;
+            margin-bottom:8px;
+            border-bottom:1px solid #eee;
+            padding-bottom:6px;
         }
         .log-card p{
+            font-size:13px;
             line-height:1.6;
-            color:#444;
+            color:#555;
+            margin-bottom:3px;
+        }
+        .log-card p b{
+            color:#333;
+        }
+        .log-photos{
+            display:flex;
+            flex-wrap:wrap;
+            gap:6px;
+            margin-top:8px;
+        }
+        .log-photos img{
+            width:70px;
+            height:70px;
+            border-radius:4px;
+            object-fit:cover;
         }
         .del-btn{
             margin-top:8px;
             color:#e53935;
             border:none;
             background:none;
-            font-size:15px;
+            font-size:14px;
         }
         .add-row{
             display:flex;
-            gap:8px;
-            margin-top:8px;
+            gap:6px;
+            margin-top:6px;
         }
         .add-row input{
             flex:1;
+            border:1px solid #ddd;
+            border-radius:6px;
+            padding:8px;
+            font-size:14px;
         }
         .add-row button{
-            width:80px;
-            background:#2478e0;
+            width:70px;
+            background:#1a73e8;
             color:#fff;
-            border:0;
-            border-radius:8px;
+            border:none;
+            border-radius:6px;
+            font-size:14px;
+        }
+        .empty-tip{
+            text-align:center;
+            color:#999;
+            padding:40px 0;
+            font-size:14px;
         }
     </style>
 </head>
 <body>
-    <div class="header">公路巡查日志</div>
+    <div class="header">
+        临安区"四好农村路"2026年提升工程<br>施工日志
+    </div>
+
     <div class="wrap">
         <!-- 记日志页面 -->
         <div id="page-form" class="page active">
-            <div class="item">
-                <span class="label-title">选择项目</span>
-                <select id="project">
-                </select>
+            <div class="form-card">
+                <div class="row">
+                    <label>选择项目</label>
+                    <select id="project"></select>
+                </div>
                 <div class="add-row">
                     <input type="text" id="newProjectInput" placeholder="输入新项目名称">
                     <button id="addProjectBtn">添加</button>
                 </div>
             </div>
-            <div class="item">
-                <span class="label-title">巡查日期</span>
-                <input type="date" id="date">
-            </div>
-            <div class="item">
-                <span class="label-title">天气</span>
-                <input type="text" id="weather" placeholder="例如：晴/阴/小雨">
-            </div>
-            <div class="item">
-                <span class="label-title">巡查桩号范围</span>
-                <input type="text" id="station" placeholder="K0+000 ~ K2+300">
-            </div>
-            <div class="item">
-                <span class="label-title">路面病害（可多选）</span>
-                <div class="check-row">
-                    <label class="check-item">
-                        <input type="checkbox" value="裂缝" class="disease"> 裂缝
-                    </label>
-                    <label class="check-item">
-                        <input type="checkbox" value="坑槽" class="disease"> 坑槽
-                    </label>
-                    <label class="check-item">
-                        <input type="checkbox" value="沉陷" class="disease"> 沉陷
-                    </label>
-                    <label class="check-item">
-                        <input type="checkbox" value="积水" class="disease"> 积水
-                    </label>
+
+            <div class="form-card">
+                <div class="row">
+                    <label>单位工程</label>
+                    <input type="text" id="unitProject" placeholder="单位工程名称">
                 </div>
-                <input type="text" id="diseaseOther" placeholder="其他病害补充" style="margin-top:8px;">
+                <div class="row">
+                    <label>分部工程</label>
+                    <input type="text" id="subProject" placeholder="分部工程名称">
+                </div>
+                <div class="row">
+                    <label>分项工程</label>
+                    <input type="text" id="itemProject" placeholder="分项工程名称">
+                </div>
+                <div class="row">
+                    <label>桩号部位</label>
+                    <input type="text" id="station" placeholder="K0+000 ~ K2+300">
+                </div>
+                <div class="row">
+                    <label>合同号</label>
+                    <input type="text" id="contractNo" placeholder="合同编号">
+                </div>
+                <div class="row">
+                    <label>编  号</label>
+                    <input type="text" id="logNo" placeholder="日志编号">
+                </div>
             </div>
-            <div class="item">
-                <span class="label-title">交安设施损坏情况</span>
-                <textarea id="traffic" placeholder="护栏、标志、标线等"></textarea>
+
+            <div class="form-card">
+                <div class="row">
+                    <label>施工日期</label>
+                    <input type="date" id="workDate">
+                </div>
+                <div class="row">
+                    <label>天  气</label>
+                    <input type="text" id="weather" placeholder="晴/阴/雨">
+                </div>
+                <div class="row">
+                    <label>最高气温</label>
+                    <input type="number" id="tempHigh" placeholder="℃">
+                </div>
+                <div class="row">
+                    <label>最低气温</label>
+                    <input type="number" id="tempLow" placeholder="℃">
+                </div>
+                <div class="row">
+                    <label>承包单位</label>
+                    <input type="text" id="contractor" placeholder="承包单位">
+                </div>
+                <div class="row">
+                    <label>监理单位</label>
+                    <input type="text" id="supervisor" placeholder="监理单位">
+                </div>
             </div>
-            <div class="item">
-                <span class="label-title">施工安全隐患</span>
-                <textarea id="danger" placeholder="现场安全隐患描述"></textarea>
+
+            <div class="form-card">
+                <div class="full-row">
+                    <label>施工内容及完成情况（可拍照）</label>
+                    <textarea id="workContent" placeholder="填写今日施工内容、完成工程量、进度情况等..."></textarea>
+                    <div class="photo-box">
+                        <input type="file" id="photoInput" accept="image/*" capture="environment" style="display:none">
+                        <button class="photo-btn" onclick="document.getElementById('photoInput').click()">📷 拍照 / 添加照片</button>
+                        <div class="photo-list" id="photoList"></div>
+                    </div>
+                </div>
             </div>
-            <div class="item">
-                <span class="label-title">人员到岗情况</span>
-                <textarea id="staff" placeholder="填写巡查人员到岗情况"></textarea>
+
+            <div class="form-card">
+                <div class="full-row">
+                    <label>资源投入情况</label>
+                    <textarea id="resource" placeholder="人员、机械、材料投入情况..."></textarea>
+                </div>
+            </div>
+
+            <div class="form-card">
+                <div class="full-row">
+                    <label>质量检查情况</label>
+                    <textarea id="quality" placeholder="质量检查结果、验收情况..."></textarea>
+                </div>
+            </div>
+
+            <div class="form-card">
+                <div class="full-row">
+                    <label>现场安全情况</label>
+                    <textarea id="safety" placeholder="安全措施、隐患排查情况..."></textarea>
+                </div>
             </div>
         </div>
+
         <!-- 日志列表页面 -->
         <div id="page-list" class="page">
             <div id="listBox"></div>
         </div>
+
         <!-- 设置页面 -->
         <div id="page-set" class="page">
-            <div class="item">
-                <span class="label-title">项目管理</span>
+            <div class="form-card">
+                <div class="title-row">项目管理</div>
                 <div id="projectManageBox"></div>
+            </div>
+            <div class="form-card">
+                <div class="title-row">默认信息设置</div>
+                <div class="row">
+                    <label>承包单位</label>
+                    <input type="text" id="setContractor" placeholder="默认承包单位">
+                </div>
+                <div class="row">
+                    <label>监理单位</label>
+                    <input type="text" id="setSupervisor" placeholder="默认监理单位">
+                </div>
+                <div class="row">
+                    <label>合同号</label>
+                    <input type="text" id="setContractNo" placeholder="默认合同号">
+                </div>
+                <button class="add-row" style="width:100%;padding:12px;background:#1a73e8;color:#fff;border:none;border-radius:6px;font-size:15px;margin-top:10px;" onclick="saveDefaultInfo()">保存默认信息</button>
             </div>
         </div>
     </div>
+
     <div class="tab-bar">
         <div class="tab active" data-page="page-form">记日志</div>
         <div class="tab" data-page="page-list">日志列表</div>
@@ -198,7 +366,7 @@
     </div>
 
 <script>
-// ========= 项目相关本地存储 =========
+// ========== 项目管理 ==========
 function getProjectList(){
     const raw = localStorage.getItem('roadProjectList');
     return raw ? JSON.parse(raw) : ["默认项目"];
@@ -217,32 +385,90 @@ function renderProjectSelect(){
         sel.appendChild(opt);
     })
 }
-// 添加新项目
 document.getElementById('addProjectBtn').onclick = function(){
     const val = document.getElementById('newProjectInput').value.trim();
-    if(!val){
-        alert("项目名称不能为空");
-        return;
-    }
+    if(!val){ alert("项目名称不能为空"); return; }
     const arr = getProjectList();
-    if(arr.includes(val)){
-        alert("该项目已经存在");
-        return;
-    }
+    if(arr.includes(val)){ alert("该项目已存在"); return; }
     arr.push(val);
     saveProjectList(arr);
     renderProjectSelect();
     document.getElementById('newProjectInput').value = "";
 }
 
-// 初始化日期为今天
+// ========== 拍照功能 ==========
+let photos = []; // 存base64图片
+document.getElementById('photoInput').onchange = function(e){
+    const file = e.target.files[0];
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = function(ev){
+        // 压缩图片
+        const img = new Image();
+        img.onload = function(){
+            const canvas = document.createElement('canvas');
+            const maxW = 800;
+            const scale = Math.min(1, maxW / img.width);
+            canvas.width = img.width * scale;
+            canvas.height = img.height * scale;
+            canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+            const compressed = canvas.toDataURL('image/jpeg', 0.6);
+            photos.push(compressed);
+            renderPhotos();
+        }
+        img.src = ev.target.result;
+    }
+    reader.readAsDataURL(file);
+    e.target.value = ""; // 允许重复选同一张
+}
+function renderPhotos(){
+    const box = document.getElementById('photoList');
+    box.innerHTML = "";
+    photos.forEach((p, idx)=>{
+        const div = document.createElement('div');
+        div.className = 'photo-item';
+        div.innerHTML = `<img src="${p}"><div class="photo-del" onclick="delPhoto(${idx})">×</div>`;
+        box.appendChild(div);
+    })
+}
+function delPhoto(idx){
+    photos.splice(idx, 1);
+    renderPhotos();
+}
+
+// ========== 默认日期 ==========
 const today = new Date();
 const y = today.getFullYear();
 const m = String(today.getMonth()+1).padStart(2,'0');
 const d = String(today.getDate()).padStart(2,'0');
-document.getElementById('date').value = `${y}-${m}-${d}`;
+document.getElementById('workDate').value = `${y}-${m}-${d}`;
 
-// Tab切换
+// ========== 默认信息加载 ==========
+function loadDefaultInfo(){
+    const info = JSON.parse(localStorage.getItem('roadDefaultInfo') || '{}');
+    if(info.contractor) document.getElementById('setContractor').value = info.contractor;
+    if(info.supervisor) document.getElementById('setSupervisor').value = info.supervisor;
+    if(info.contractNo) document.getElementById('setContractNo').value = info.contractNo;
+    // 回填到表单
+    if(info.contractor) document.getElementById('contractor').value = info.contractor;
+    if(info.supervisor) document.getElementById('supervisor').value = info.supervisor;
+    if(info.contractNo) document.getElementById('contractNo').value = info.contractNo;
+}
+function saveDefaultInfo(){
+    const info = {
+        contractor: document.getElementById('setContractor').value,
+        supervisor: document.getElementById('setSupervisor').value,
+        contractNo: document.getElementById('setContractNo').value
+    };
+    localStorage.setItem('roadDefaultInfo', JSON.stringify(info));
+    // 回填表单
+    document.getElementById('contractor').value = info.contractor;
+    document.getElementById('supervisor').value = info.supervisor;
+    document.getElementById('contractNo').value = info.contractNo;
+    alert("默认信息已保存！");
+}
+
+// ========== Tab切换 ==========
 const tabs = document.querySelectorAll('.tab');
 tabs.forEach(tab=>{
     tab.onclick = ()=>{
@@ -256,73 +482,88 @@ tabs.forEach(tab=>{
     }
 })
 
-// 获取日志数组
+// ========== 日志存储 ==========
 function getLogs(){
     const raw = localStorage.getItem('roadLog');
     return raw ? JSON.parse(raw) : [];
 }
-// 保存日志数组
 function saveLogs(arr){
     localStorage.setItem('roadLog', JSON.stringify(arr));
 }
 
-// 保存日志（点击【记日志】标签保存）
+// 保存日志（点击记日志标签）
 document.querySelector('[data-page="page-form"]').addEventListener('click',()=>{
     if(!document.getElementById('page-form').classList.contains('active')) return;
-    const project = document.getElementById('project').value;
-    const date = document.getElementById('date').value;
-    const weather = document.getElementById('weather').value;
+    
+    const workDate = document.getElementById('workDate').value;
     const station = document.getElementById('station').value;
-    const diseaseCheck = Array.from(document.querySelectorAll('.disease:checked')).map(el=>el.value);
-    const diseaseOther = document.getElementById('diseaseOther').value;
-    const traffic = document.getElementById('traffic').value;
-    const danger = document.getElementById('danger').value;
-    const staff = document.getElementById('staff').value;
+    const workContent = document.getElementById('workContent').value;
+    
+    if(!workDate){ alert('施工日期不能为空！'); return; }
+    if(!workContent.trim() && photos.length === 0){ alert('施工内容或照片至少填写一项！'); return; }
 
-    if(!date || !station){
-        alert('巡查日期、桩号范围不能为空！');
-        return;
-    }
     const log = {
         id: Date.now(),
-        project,date,weather,station,
-        diseaseCheck, diseaseOther,
-        traffic,danger,staff
+        project: document.getElementById('project').value,
+        unitProject: document.getElementById('unitProject').value,
+        subProject: document.getElementById('subProject').value,
+        itemProject: document.getElementById('itemProject').value,
+        station: station,
+        contractNo: document.getElementById('contractNo').value,
+        logNo: document.getElementById('logNo').value,
+        workDate: workDate,
+        weather: document.getElementById('weather').value,
+        tempHigh: document.getElementById('tempHigh').value,
+        tempLow: document.getElementById('tempLow').value,
+        contractor: document.getElementById('contractor').value,
+        supervisor: document.getElementById('supervisor').value,
+        workContent: workContent,
+        photos: photos,
+        resource: document.getElementById('resource').value,
+        quality: document.getElementById('quality').value,
+        safety: document.getElementById('safety').value
     };
+    
     const logs = getLogs();
     logs.unshift(log);
     saveLogs(logs);
     alert('日志保存成功！');
-    document.querySelectorAll('.disease').forEach(cb=>cb.checked=false);
-    document.getElementById('diseaseOther').value='';
-    document.getElementById('weather').value='';
-    document.getElementById('station').value='';
-    document.getElementById('traffic').value='';
-    document.getElementById('danger').value='';
-    document.getElementById('staff').value='';
+    
+    // 清空施工内容相关，保留日期和默认信息
+    photos = [];
+    renderPhotos();
+    document.getElementById('workContent').value = '';
+    document.getElementById('resource').value = '';
+    document.getElementById('quality').value = '';
+    document.getElementById('safety').value = '';
+    document.getElementById('weather').value = '';
+    document.getElementById('tempHigh').value = '';
+    document.getElementById('tempLow').value = '';
 })
 
-// 渲染日志列表
+// ========== 日志列表渲染 ==========
 function renderList(){
     const box = document.getElementById('listBox');
     const logs = getLogs();
     if(logs.length === 0){
-        box.innerHTML = '<div class="log-card">暂无巡查日志记录</div>';
+        box.innerHTML = '<div class="empty-tip">暂无施工日志记录</div>';
         return;
     }
     let html = '';
     logs.forEach(item=>{
-        const disStr = [...item.diseaseCheck, item.diseaseOther].filter(s=>s).join('、');
         html += `
         <div class="log-card">
+            <h4>${item.workDate} 施工日志</h4>
             <p><b>项目：</b>${item.project}</p>
-            <p><b>日期：</b>${item.date}</p>
-            <p><b>天气：</b>${item.weather||'无'}</p>
-            <p><b>桩号：</b>${item.station}</p>
-            <p><b>路面病害：</b>${disStr||'无'}</p>
-            <p><b>交安设施：</b>${item.traffic||'无'}</p>
-            <p><b>安全隐患：</b>${item.danger||'无'}</p>
-            <p><b>人员到岗：</b>${item.staff||'无'}</p>
+            <p><b>单位工程：</b>${item.unitProject || '-'}</p>
+            <p><b>分部工程：</b>${item.subProject || '-'}</p>
+            <p><b>桩号部位：</b>${item.station || '-'}</p>
+            <p><b>天气：</b>${item.weather || '-'}　气温：${item.tempHigh||'-'}℃ ~ ${item.tempLow||'-'}℃</p>
+            <p><b>施工内容：</b>${item.workContent || '-'}</p>
+            ${item.photos && item.photos.length > 0 ? `<div class="log-photos">${item.photos.map(p=>`<img src="${p}">`).join('')}</div>` : ''}
+            <p><b>资源投入：</b>${item.resource || '-'}</p>
+            <p><b>质量检查：</b>${item.quality || '-'}</p>
+            <p><b>安全情况：</b>${item.safety || '-'}</p>
             <button class="del-btn" data-id="${item.id}">删除本条</button>
         </div>
         `
@@ -330,6 +571,7 @@ function renderList(){
     box.innerHTML = html;
     document.querySelectorAll('.del-btn').forEach(btn=>{
         btn.onclick = ()=>{
+            if(!confirm('确定删除这条日志吗？')) return;
             const delId = Number(btn.dataset.id);
             let arr = getLogs().filter(x=>x.id !== delId);
             saveLogs(arr);
@@ -337,16 +579,17 @@ function renderList(){
         }
     })
 }
-// 设置页：项目管理（删除项目）
+
+// ========== 项目管理（设置页） ==========
 function renderProjectManage(){
     const box = document.getElementById('projectManageBox');
     const list = getProjectList();
     let html = "";
     list.forEach(name=>{
         html += `
-        <div class="log-card" style="display:flex;justify-content:space-between;align-items:center;">
-            <span>${name}</span>
-            <button class="del-btn" data-pro="${name}">删除</button>
+        <div class="log-card" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+            <span style="font-size:14px;">${name}</span>
+            <button class="del-btn" data-pro="${name}" style="margin-top:0;">删除</button>
         </div>
         `
     })
@@ -354,10 +597,8 @@ function renderProjectManage(){
     document.querySelectorAll('.del-btn').forEach(btn=>{
         btn.onclick = ()=>{
             const pName = btn.dataset.pro;
-            if(pName === "默认项目"){
-                alert("默认项目不能删除");
-                return;
-            }
+            if(pName === "默认项目"){ alert("默认项目不能删除"); return; }
+            if(!confirm(`确定删除项目「${pName}」吗？`)) return;
             let arr = getProjectList().filter(x=>x!==pName);
             saveProjectList(arr);
             renderProjectSelect();
@@ -366,8 +607,9 @@ function renderProjectManage(){
     })
 }
 
-// 页面加载初始化项目下拉
+// 初始化
 renderProjectSelect();
+loadDefaultInfo();
 </script>
 </body>
 </html>
