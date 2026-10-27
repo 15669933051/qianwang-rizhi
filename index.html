@@ -105,6 +105,21 @@
             background:none;
             font-size:15px;
         }
+        .add-row{
+            display:flex;
+            gap:8px;
+            margin-top:8px;
+        }
+        .add-row input{
+            flex:1;
+        }
+        .add-row button{
+            width:80px;
+            background:#2478e0;
+            color:#fff;
+            border:0;
+            border-radius:8px;
+        }
     </style>
 </head>
 <body>
@@ -115,8 +130,11 @@
             <div class="item">
                 <span class="label-title">选择项目</span>
                 <select id="project">
-                    <option>默认项目</option>
                 </select>
+                <div class="add-row">
+                    <input type="text" id="newProjectInput" placeholder="输入新项目名称">
+                    <button id="addProjectBtn">添加</button>
+                </div>
             </div>
             <div class="item">
                 <span class="label-title">巡查日期</span>
@@ -168,8 +186,8 @@
         <!-- 设置页面 -->
         <div id="page-set" class="page">
             <div class="item">
-                <span class="label-title">设置</span>
-                <textarea placeholder="预留扩展"></textarea>
+                <span class="label-title">项目管理</span>
+                <div id="projectManageBox"></div>
             </div>
         </div>
     </div>
@@ -180,6 +198,43 @@
     </div>
 
 <script>
+// ========= 项目相关本地存储 =========
+function getProjectList(){
+    const raw = localStorage.getItem('roadProjectList');
+    return raw ? JSON.parse(raw) : ["默认项目"];
+}
+function saveProjectList(arr){
+    localStorage.setItem('roadProjectList', JSON.stringify(arr));
+}
+function renderProjectSelect(){
+    const sel = document.getElementById('project');
+    const list = getProjectList();
+    sel.innerHTML = "";
+    list.forEach(name=>{
+        const opt = document.createElement('option');
+        opt.innerText = name;
+        opt.value = name;
+        sel.appendChild(opt);
+    })
+}
+// 添加新项目
+document.getElementById('addProjectBtn').onclick = function(){
+    const val = document.getElementById('newProjectInput').value.trim();
+    if(!val){
+        alert("项目名称不能为空");
+        return;
+    }
+    const arr = getProjectList();
+    if(arr.includes(val)){
+        alert("该项目已经存在");
+        return;
+    }
+    arr.push(val);
+    saveProjectList(arr);
+    renderProjectSelect();
+    document.getElementById('newProjectInput').value = "";
+}
+
 // 初始化日期为今天
 const today = new Date();
 const y = today.getFullYear();
@@ -197,6 +252,7 @@ tabs.forEach(tab=>{
         document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
         document.getElementById(targetId).classList.add('active');
         if(targetId === 'page-list') renderList();
+        if(targetId === 'page-set') renderProjectManage();
     }
 })
 
@@ -210,9 +266,8 @@ function saveLogs(arr){
     localStorage.setItem('roadLog', JSON.stringify(arr));
 }
 
-// 保存表单（点击“记日志”逻辑，我把保存动作绑定在tab文字区域，如果你想要独立保存按钮我再加）
+// 保存日志（点击【记日志】标签保存）
 document.querySelector('[data-page="page-form"]').addEventListener('click',()=>{
-    // 只在当前是表单页时执行保存
     if(!document.getElementById('page-form').classList.contains('active')) return;
     const project = document.getElementById('project').value;
     const date = document.getElementById('date').value;
@@ -238,7 +293,6 @@ document.querySelector('[data-page="page-form"]').addEventListener('click',()=>{
     logs.unshift(log);
     saveLogs(logs);
     alert('日志保存成功！');
-    // 清空病害勾选，保留日期
     document.querySelectorAll('.disease').forEach(cb=>cb.checked=false);
     document.getElementById('diseaseOther').value='';
     document.getElementById('weather').value='';
@@ -248,7 +302,7 @@ document.querySelector('[data-page="page-form"]').addEventListener('click',()=>{
     document.getElementById('staff').value='';
 })
 
-// 渲染列表
+// 渲染日志列表
 function renderList(){
     const box = document.getElementById('listBox');
     const logs = getLogs();
@@ -274,7 +328,6 @@ function renderList(){
         `
     })
     box.innerHTML = html;
-    // 删除事件
     document.querySelectorAll('.del-btn').forEach(btn=>{
         btn.onclick = ()=>{
             const delId = Number(btn.dataset.id);
@@ -284,6 +337,37 @@ function renderList(){
         }
     })
 }
+// 设置页：项目管理（删除项目）
+function renderProjectManage(){
+    const box = document.getElementById('projectManageBox');
+    const list = getProjectList();
+    let html = "";
+    list.forEach(name=>{
+        html += `
+        <div class="log-card" style="display:flex;justify-content:space-between;align-items:center;">
+            <span>${name}</span>
+            <button class="del-btn" data-pro="${name}">删除</button>
+        </div>
+        `
+    })
+    box.innerHTML = html;
+    document.querySelectorAll('.del-btn').forEach(btn=>{
+        btn.onclick = ()=>{
+            const pName = btn.dataset.pro;
+            if(pName === "默认项目"){
+                alert("默认项目不能删除");
+                return;
+            }
+            let arr = getProjectList().filter(x=>x!==pName);
+            saveProjectList(arr);
+            renderProjectSelect();
+            renderProjectManage();
+        }
+    })
+}
+
+// 页面加载初始化项目下拉
+renderProjectSelect();
 </script>
 </body>
 </html>
