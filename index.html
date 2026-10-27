@@ -4,6 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>施工日志</title>
+    <!-- docx生成依赖CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/docxtemplater@3.37.12/build/docxtemplater.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/pizzip@3.1.4/dist/pizzip.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/pizzip@3.1.4/dist/pizzip-utils.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/docxtemplater-image-module-free@1.1.1/dist/image-module.js"></script>
     <style>
         *{
             box-sizing: border-box;
@@ -208,7 +214,7 @@
             background:none;
             font-size:14px;
         }
-        .export-btn{
+        .docx-btn{
             margin-top:8px;
             margin-right:12px;
             color:#1a73e8;
@@ -282,7 +288,7 @@
                 padding:0;
                 background:#fff;
             }
-            .tab-bar,.save-btn-wrap,.list-top-bar,.del-btn,.export-btn,.print-btn{display:none !important;}
+            .tab-bar,.save-btn-wrap,.list-top-bar,.del-btn,.docx-btn,.print-btn{display:none !important;}
 
             #printWrap .img-wrap{
                 overflow:hidden;
@@ -408,7 +414,7 @@
             </div>
         </div>
 
-        <!-- 日志列表页面（导出、打印在这里） -->
+        <!-- 日志列表页面（导出docx、打印在这里） -->
         <div id="page-list" class="page">
             <div class="list-top-bar">
                 <button onclick="exportAllBackup()">📦全部日志备份(json)</button>
@@ -713,7 +719,7 @@ document.getElementById('saveLogBtn').onclick = function(){
     document.getElementById('recorder').value = '';
 }
 
-// ========== 单条A4浏览器打印功能【修复打印无响应BUG】 ==========
+// ========== 单条A4浏览器打印功能 ==========
 function printItem(logItem){
     let imgHtml = "";
     if(logItem.photos && logItem.photos.length>0){
@@ -757,71 +763,107 @@ function printItem(logItem){
     },100);
 }
 
-// ========== 导出单条word【3张一行，浮动布局Word高兼容，限制图片最大高度，防止一张一页】 ==========
-function exportItemWord(logItem){
-    let imgHtml = "";
-    if(logItem.photos && logItem.photos.length>0){
-        imgHtml += `
-<div style="overflow:hidden;margin:12px 0;page-break-inside:avoid;mso-page-break-inside:avoid;">
-`;
-        logItem.photos.forEach(p=>{
-            imgHtml += `
-<div style="width:calc((100% - 24px)/3);float:left;margin-right:12px;margin-bottom:12px;page-break-inside:avoid;mso-page-break-inside:avoid;">
-    <img src="${p}" style="width:100%;height:auto;max-height:220px;object-fit:contain;display:block;border:1px solid #aaa;">
-</div>
-`;
+// ========== 【升级：原生docx + 图片三列表格排版】 ==========
+async function exportRealDocx(logItem){
+    alert("正在生成docx，照片越多耗时越长，请稍候……");
+    // 图片模块初始化
+    const imageModule = new ImageModule({
+        getImage: async function(r, a) {
+            return await fetch(r).then(res=>res.arrayBuffer());
+        },
+        getSize: function(imgBuffer){
+            return {width:210, height:140}; // 固定图片尺寸，A4一行3张
+        }
+    });
+
+    // 构建图片行数组，每3张一组
+    const photoRows = [];
+    const photosArr = logItem.photos || [];
+    for(let i=0;i<photosArr.length;i+=3){
+        const chunk = photosArr.slice(i,i+3);
+        photoRows.push({
+            img1: chunk[0] || null,
+            img2: chunk[1] || null,
+            img3: chunk[2] || null
         })
-        imgHtml += `</div><div style="clear:both;"></div>`;
     }
 
-    const html = `
-<html xmlns:o="urn:schemas-microsoft-com:office:office">
-<head>
-<meta charset="utf‑8">
-<title>施工日志-${logItem.workDate}</title>
-<style>
-@page {size:A4; margin:2cm;}
-body{font-family:SimSun,宋体;}
-p{font-size:12pt;line-height:1.6;}
-h2{text-align:center;font-size:18pt;}
-h3{font-size:14pt;margin-top:12pt;}
-hr{border:0.5pt solid #333;}
-</style>
-</head>
-<body>
-    <h2>施工日志</h2>
-    <p align="center" style="text-align:center;color:#444;">${logItem.workDate}　${logItem.weather || ''}　${logItem.tempInfo || ''}</p>
-    <hr>
-    <p><b>项目名称：</b>${logItem.project||""}</p>
-    <p><b>项目地址：</b>${logItem.projectAddr||""}</p>
-    <p><b>建设单位：</b>${logItem.buildUnit||""}</p>
-    <p><b>施工单位：</b>${logItem.contractor||""}</p>
-    <hr>
-    <h3>■ 生产记录</h3>
-    <p><b>今日完成：</b></p>
-    <p style="white-space:pre-line;">${logItem.workToday||""}</p>
-    <p><b>明日计划：</b></p>
-    <p style="white-space:pre-line;">${logItem.workTomorrow||""}</p>
-    <h3>■ 质量与安全</h3>
-    <p style="white-space:pre-line;">${logItem.qualitySafe||""}</p>
-    <h3>■ 现场照片</h3>
-    ${imgHtml}
-    <hr>
-    <div style="display:flex;justify-content:space-between;">
-        <p><b>负责人：</b>${logItem.personCharge||""}</p>
-        <p><b>记录人：</b>${logItem.recorder||""}</p>
-    </div>
-</body></html>
-`;
-    const blob = new Blob([html],{type:'application/msword;charset=utf-8'});
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `施工日志_${logItem.workDate}.doc`;
+    // A4模板，表格3列，循环行渲染图片
+    const templateContent = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<pkg:package xmlns:pkg="http://schemas.openxmlformats.org/package/2006">
+<pkg:types xmlns:pkg="http://schemas.openxmlformats.org/package/2006">
+<pkg:default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+<pkg:default Extension="xml" ContentType="application/xml"/>
+<pkg:override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>
+</pkg:types>
+<pkg:part name="/word/document.xml" contentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml">
+<pkg:xmlData>
+<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+<w:body>
+<w:p><w:r><w:t>施工日志</w:t></w:r></w:p>
+<w:p><w:r><w:t>{dateInfo}</w:t></w:r></w:p>
+<w:p><w:r><w:t>项目名称：{project}</w:t></w:r></w:p>
+<w:p><w:r><w:t>项目地址：{projectAddr}</w:t></w:r></w:p>
+<w:p><w:r><w:t>建设单位：{buildUnit}</w:t></w:r></w:p>
+<w:p><w:r><w:t>施工单位：{contractor}</w:t></w:r></w:p>
+<w:p><w:r><w:t>监理单位：{supervisor}</w:t></w:r></w:p>
+<w:p><w:r><w:t>合同号：{contractNo}</w:t></w:r></w:p>
+<w:p><w:r><w:t>■生产记录 今日完成：{workToday}</w:t></w:r></w:p>
+<w:p><w:r><w:t>■生产记录 明日计划：{workTomorrow}</w:t></w:r></w:p>
+<w:p><w:r><w:t>■质量与安全：{qualitySafe}</w:t></w:r></w:p>
+<w:p><w:r><w:t>■现场照片</w:t></w:r></w:p>
+{#photoRows}
+<w:tbl>
+<w:tblPr><w:tblW w:w="5000" w:type="pct"/></w:tblPr>
+<w:tr>
+<w:tc><w:p>{#img1}{@img1}{/img1}</w:p></w:tc>
+<w:tc><w:p>{#img2}{@img2}{/img2}</w:p></w:tc>
+<w:tc><w:p>{#img3}{@img3}{/img3}</w:p></w:tc>
+</w:tr>
+</w:tbl>
+{/photoRows}
+<w:p><w:r><w:t>负责人：{personCharge}　记录人：{recorder}</w:t></w:r></w:p>
+</w:body>
+</w:document>
+</pkg:xmlData>
+</pkg:part>
+<pkg:part name="/_rels/.rels" contentType="application/vnd.openxmlformats-package.relationships+xml">
+<pkg:xmlData>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>
+</Relationships>
+</pkg:xmlData>
+</pkg:part>
+</pkg:package>`;
+
+    const zip = new PizZip(templateContent);
+    const doc = new window.docxtemplater(zip, {
+        modules: [imageModule],
+        nullGetter:function(){return "";}
+    });
+    doc.render({
+        dateInfo:`${logItem.workDate} ${logItem.weather||""} ${logItem.tempInfo||""}`,
+        project:logItem.project||"",
+        projectAddr:logItem.projectAddr||"",
+        buildUnit:logItem.buildUnit||"",
+        contractor:logItem.contractor||"",
+        supervisor:logItem.supervisor||"",
+        contractNo:logItem.contractNo||"",
+        workToday:logItem.workToday||"",
+        workTomorrow:logItem.workTomorrow||"",
+        qualitySafe:logItem.qualitySafe||"",
+        personCharge:logItem.personCharge||"",
+        recorder:logItem.recorder||"",
+        photoRows: photoRows
+    });
+    const out = doc.getZip().generate({type:"blob",mimeType:"application/vnd.openxmlformats-officedocument.wordprocessingml.document"});
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(out);
+    a.download = `施工日志_${logItem.workDate}.docx`;
     document.body.appendChild(a);
     a.click();
     a.remove();
-    URL.revokeObjectURL(url);
+    URL.revokeObjectURL(a.href);
 }
 
 //全部日志备份json
@@ -887,7 +929,7 @@ function renderList(){
             ${item.photos && item.photos.length > 0 ? `<div class="log-photos">${item.photos.map(p=>`<img src="${p}">`).join('')}</div>` : ''}
             <p><b>负责人：</b>${item.personCharge||'-'}　记录人：${item.recorder||'-'}</p>
             <button class="print-btn" data-id="${item.id}">🖨打印A4</button>
-            <button class="export-btn" data-id="${item.id}">📄导出本条Word</button>
+            <button class="docx-btn" data-id="${item.id}">📄导出原生docx</button>
             <button class="del-btn" data-id="${item.id}">删除本条</button>
         </div>
         `
@@ -901,12 +943,12 @@ function renderList(){
             if(oneLog) printItem(oneLog);
         }
     })
-    //导出按钮事件
-    document.querySelectorAll('.export-btn').forEach(btn=>{
-        btn.onclick = ()=>{
+    //导出docx按钮
+    document.querySelectorAll('.docx-btn').forEach(btn=>{
+        btn.onclick = async ()=>{
             const id = Number(btn.dataset.id);
             const oneLog = getLogs().find(x=>x.id===id);
-            if(oneLog) exportItemWord(oneLog);
+            if(oneLog) await exportRealDocx(oneLog);
         }
     })
     document.querySelectorAll('.del-btn').forEach(btn=>{
