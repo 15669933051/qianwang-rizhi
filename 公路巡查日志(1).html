@@ -1,0 +1,1029 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#1a4b8c">
+<title>公路巡查日志</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='18' fill='%231a4b8c'/><text x='50' y='68' font-size='52' text-anchor='middle' fill='white' font-family='sans-serif' font-weight='bold'>路</text></svg>">
+<script src="https://fastly.jsdelivr.net/npm/docx@8.5.0/build/index.umd.js"></script>
+<style>
+:root{
+  --blue:#1a4b8c; --blue-d:#123a6e; --blue-l:#e8f0fa;
+  --bg:#f2f4f7; --card:#ffffff; --line:#dfe3e9;
+  --txt:#1f2733; --txt-2:#5b6675; --txt-3:#8a94a3;
+  --warn:#c0392b; --ok:#2e7d4f; --amber:#e08a1e;
+  --radius:10px; --shadow:0 1px 3px rgba(20,40,80,.08);
+}
+*{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+html,body{margin:0; padding:0; background:var(--bg); color:var(--txt);
+  font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;
+  font-size:15px; line-height:1.5;}
+body{padding-bottom:72px; min-height:100vh;}
+input,textarea,select,button{font-family:inherit; font-size:16px;}
+/* ===== 顶栏 ===== */
+.topbar{position:sticky; top:0; z-index:50; background:var(--blue); color:#fff;
+  padding:env(safe-area-inset-top) 0 0; box-shadow:0 2px 8px rgba(0,0,0,.15);}
+.topbar-in{display:flex; align-items:center; height:50px; padding:0 14px;}
+.topbar h1{font-size:17px; margin:0; font-weight:600; flex:1; text-align:center;}
+.topbar .back{background:none; border:none; color:#fff; font-size:15px; padding:8px;
+  min-width:44px; min-height:44px; cursor:pointer; display:flex; align-items:center;}
+.topbar .right{min-width:44px; min-height:44px; display:flex; align-items:center; justify-content:flex-end;}
+/* ===== 底部导航 ===== */
+.tabbar{position:fixed; bottom:0; left:0; right:0; z-index:50; background:#fff;
+  border-top:1px solid var(--line); display:flex; padding-bottom:env(safe-area-inset-bottom);
+  box-shadow:0 -2px 10px rgba(0,0,0,.05);}
+.tabbar button{flex:1; background:none; border:none; padding:8px 0 6px; cursor:pointer;
+  display:flex; flex-direction:column; align-items:center; gap:2px; color:var(--txt-3);}
+.tabbar button.on{color:var(--blue);}
+.tabbar .ic{width:24px; height:24px;}
+.tabbar .lb{font-size:11px;}
+/* ===== 视图 ===== */
+.view{display:none; padding:12px; max-width:720px; margin:0 auto;}
+.view.on{display:block;}
+/* ===== 卡片/表单 ===== */
+.card{background:var(--card); border-radius:var(--radius); box-shadow:var(--shadow);
+  padding:14px; margin-bottom:12px;}
+.card h3{font-size:14px; margin:0 0 12px; color:var(--blue); font-weight:600;
+  padding-left:8px; border-left:3px solid var(--blue);}
+.f-row{display:flex; gap:10px; margin-bottom:10px;}
+.f-row:last-child{margin-bottom:0;}
+.f-item{flex:1; min-width:0;}
+.f-item label{display:block; font-size:12px; color:var(--txt-2); margin-bottom:4px;}
+.f-item input,.f-item select,.f-item textarea{
+  width:100%; border:1px solid var(--line); border-radius:8px; padding:10px;
+  background:#fafbfc; color:var(--txt); min-height:44px;}
+.f-item textarea{min-height:80px; resize:vertical; line-height:1.5;}
+.f-item input:focus,.f-item select:focus,.f-item textarea:focus{
+  outline:none; border-color:var(--blue); background:#fff;}
+/* 病害多选chips */
+.chips{display:flex; flex-wrap:wrap; gap:8px;}
+.chip{border:1px solid var(--line); background:#fafbfc; border-radius:20px;
+  padding:8px 14px; font-size:14px; cursor:pointer; min-height:38px; color:var(--txt-2);}
+.chip.on{background:var(--blue-l); border-color:var(--blue); color:var(--blue); font-weight:600;}
+/* ===== 照片区 ===== */
+.photo-grid{display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-top:8px;}
+.photo-cell{position:relative; aspect-ratio:1; border-radius:8px; overflow:hidden;
+  background:#eef1f5; border:1px solid var(--line);}
+.photo-cell img{width:100%; height:100%; object-fit:cover;}
+.photo-cell .cap{position:absolute; left:0; right:0; bottom:0; background:rgba(0,0,0,.55);
+  color:#fff; font-size:10px; padding:3px 5px; max-height:34px; overflow:hidden;}
+.photo-cell .del{position:absolute; top:4px; right:4px; width:24px; height:24px;
+  border-radius:50%; background:rgba(0,0,0,.6); color:#fff; border:none; font-size:14px;
+  line-height:24px; text-align:center; cursor:pointer;}
+.photo-add{aspect-ratio:1; border:2px dashed var(--line); border-radius:8px;
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  color:var(--txt-3); cursor:pointer; background:#fafbfc;}
+.photo-add .plus{font-size:30px; line-height:1; color:var(--blue);}
+.photo-add span{font-size:11px; margin-top:4px;}
+/* ===== 按钮 ===== */
+.btn{display:block; width:100%; border:none; border-radius:10px; padding:14px;
+  font-size:16px; font-weight:600; cursor:pointer; min-height:48px;}
+.btn-pri{background:var(--blue); color:#fff;}
+.btn-pri:active{background:var(--blue-d);}
+.btn-ghost{background:var(--blue-l); color:var(--blue);}
+.btn-warn{background:#fdecea; color:var(--warn);}
+.btn-row{display:flex; gap:10px;}
+.btn-row .btn{flex:1;}
+/* ===== 列表 ===== */
+.log-item{background:var(--card); border-radius:var(--radius); box-shadow:var(--shadow);
+  padding:12px 14px; margin-bottom:10px; cursor:pointer;}
+.log-item .lt{font-size:15px; font-weight:600; margin-bottom:4px;}
+.log-item .lm{font-size:12px; color:var(--txt-2); line-height:1.6;}
+.log-item .ltags{margin-top:6px; display:flex; flex-wrap:wrap; gap:4px;}
+.log-item .tag{font-size:11px; background:var(--blue-l); color:var(--blue);
+  padding:2px 8px; border-radius:10px;}
+.empty{text-align:center; padding:60px 20px; color:var(--txt-3);}
+.empty .big{font-size:40px; margin-bottom:10px;}
+/* ===== toast ===== */
+.toast{position:fixed; left:50%; bottom:100px; transform:translateX(-50%);
+  background:rgba(20,30,50,.9); color:#fff; padding:10px 20px; border-radius:24px;
+  font-size:14px; z-index:100; opacity:0; transition:opacity .25s; pointer-events:none;}
+.toast.show{opacity:1;}
+/* ===== 设置页 ===== */
+.set-row{display:flex; align-items:center; padding:12px 0; border-bottom:1px solid var(--line);}
+.set-row:last-child{border-bottom:none;}
+.set-row label{flex:1; font-size:14px; color:var(--txt-2);}
+.set-row input{flex:1; border:1px solid var(--line); border-radius:8px; padding:8px 10px;
+  min-height:40px; text-align:right; background:#fafbfc;}
+.hint{font-size:12px; color:var(--txt-3); line-height:1.6; margin-top:8px;}
+/* ===== 日历 ===== */
+.cal-head{display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;}
+.cal-title{font-size:16px; font-weight:600; color:var(--blue);}
+.cal-nav{background:var(--blue-l); border:none; color:var(--blue); width:36px; height:36px;
+  border-radius:8px; font-size:20px; cursor:pointer; line-height:1;}
+.cal-grid{display:grid; grid-template-columns:repeat(7,1fr); gap:2px;}
+.cal-grid .dow{font-size:11px; color:var(--txt-3); text-align:center; padding:4px 0;}
+.cal-cell{aspect-ratio:1; display:flex; flex-direction:column; align-items:center; justify-content:center;
+  font-size:13px; border-radius:8px; cursor:pointer; position:relative; color:var(--txt);}
+.cal-cell.other{color:#c5cbd4;}
+.cal-cell.today{background:var(--blue-l); font-weight:700;}
+.cal-cell.selected{background:var(--blue); color:#fff;}
+.cal-cell .dot{width:5px; height:5px; border-radius:50%; background:var(--blue); margin-top:2px;}
+.cal-cell.selected .dot{background:#fff;}
+.cal-cell.other .dot{background:#c5cbd4;}
+.cal-foot{display:flex; gap:8px; margin-top:10px;}
+.cal-filter{flex:1; border:1px solid var(--line); background:#fafbfc; color:var(--txt-2);
+  border-radius:8px; padding:8px; font-size:13px; cursor:pointer; min-height:38px;}
+.cal-filter.on{background:var(--blue); color:#fff; border-color:var(--blue);}
+/* ===== 项目切换tab ===== */
+.proj-tabs{display:flex; gap:6px; overflow-x:auto; padding:2px 2px 10px; -webkit-overflow-scrolling:touch;}
+.proj-tab{flex:none; border:1px solid var(--line); background:#fff; color:var(--txt-2);
+  border-radius:20px; padding:7px 14px; font-size:13px; cursor:pointer; white-space:nowrap; min-height:36px;}
+.proj-tab.on{background:var(--blue); color:#fff; border-color:var(--blue); font-weight:600;}
+/* ===== 项目管理弹窗 ===== */
+.modal-mask{position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:200; display:none; align-items:flex-end; justify-content:center;}
+.modal-mask.on{display:flex;}
+.modal{background:#fff; width:100%; max-width:720px; border-radius:14px 14px 0 0; padding:16px; max-height:85vh; overflow-y:auto;}
+.modal h3{margin:0 0 12px; font-size:16px;}
+.proj-item{display:flex; align-items:center; padding:10px 0; border-bottom:1px solid var(--line); gap:8px;}
+.proj-item .nm{flex:1; font-size:14px;}
+.proj-item .btns{display:flex; gap:6px;}
+.proj-item button{border:1px solid var(--line); background:#fafbfc; border-radius:6px; padding:6px 10px; font-size:12px; cursor:pointer; min-height:32px;}
+.proj-item .del{color:var(--warn); border-color:#f5c6c0;}
+@media(min-width:768px){
+  .view{padding:20px;}
+  .photo-grid{grid-template-columns:repeat(4,1fr);}
+}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-in">
+    <button class="back" id="btnBack" style="visibility:hidden" onclick="goBack()">‹ 返回</button>
+    <h1 id="topTitle">公路巡查日志</h1>
+    <div class="right" id="topRight"></div>
+  </div>
+</div>
+
+<!-- ===== 视图：新建/编辑记录 ===== -->
+<div class="view" id="view-new">
+  <div class="card" style="padding:10px 14px">
+    <div style="display:flex; align-items:center; gap:8px;">
+      <label style="font-size:13px;color:var(--txt-2);white-space:nowrap">当前项目</label>
+      <select id="f-project" style="flex:1;border:1px solid var(--line);border-radius:8px;padding:10px;background:#fafbfc;min-height:44px" onchange="onProjectChange()"></select>
+      <button class="cal-nav" style="width:36px;flex:none" onclick="manageProjects()" title="管理项目"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
+    </div>
+  </div>
+  <div class="card">
+    <h3>工程信息</h3>
+    <div class="f-row">
+      <div class="f-item"><label>单位工程</label><input id="f-unit" placeholder="如：路面工程"></div>
+      <div class="f-item"><label>分部工程</label><input id="f-part" placeholder="如：沥青面层"></div>
+    </div>
+    <div class="f-row">
+      <div class="f-item"><label>分项工程</label><input id="f-sub" placeholder="如：下面层摊铺"></div>
+      <div class="f-item"><label>桩号、部位</label><input id="f-stake" placeholder="如：K12+300~K12+500"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>日期天气</h3>
+    <div class="f-row">
+      <div class="f-item"><label>施工日期</label><input type="date" id="f-date"></div>
+      <div class="f-item"><label>星期</label><input id="f-week" placeholder="自动" readonly></div>
+    </div>
+    <div class="f-row">
+      <div class="f-item"><label>天气</label>
+        <select id="f-weather">
+          <option value="">请选择</option>
+          <option>晴</option><option>多云</option><option>阴</option>
+          <option>小雨</option><option>中雨</option><option>大雨</option>
+          <option>雪</option><option>雾</option>
+        </select>
+      </div>
+      <div class="f-item"><label>最高气温(℃)</label><input type="number" id="f-tmax" inputmode="numeric"></div>
+      <div class="f-item"><label>最低气温(℃)</label><input type="number" id="f-tmin" inputmode="numeric"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>施工内容及完成情况（可拍照+备注）</h3>
+    <div class="f-item"><textarea id="f-content" placeholder="记录当天施工内容、完成工程量、进度情况……"></textarea></div>
+    <div class="photo-grid" id="photoGrid">
+      <div class="photo-add" onclick="pickPhoto()">
+        <div class="plus">+</div><span>拍照/相册</span>
+      </div>
+    </div>
+    <input type="file" id="fileInput" accept="image/*" capture="environment" style="display:none">
+  </div>
+
+  <div class="card">
+    <h3>路面病害类型（多选）</h3>
+    <div class="chips" id="chipsDisease">
+      <div class="chip" data-v="裂缝">裂缝</div>
+      <div class="chip" data-v="坑槽">坑槽</div>
+      <div class="chip" data-v="沉陷">沉陷</div>
+      <div class="chip" data-v="积水">积水</div>
+      <div class="chip" data-v="车辙">车辙</div>
+      <div class="chip" data-v="松散">松散</div>
+      <div class="chip" data-v="无病害">无病害</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>现场情况记录</h3>
+    <div class="f-row"><div class="f-item">
+      <label>交安设施损坏情况</label>
+      <textarea id="f-traffic" placeholder="护栏、标志、标线、里程碑等损坏情况"></textarea>
+    </div></div>
+    <div class="f-row"><div class="f-item">
+      <label>资源投入情况（人员/机械/材料）</label>
+      <textarea id="f-resource" placeholder="投入人工数量、机械设备、材料用量"></textarea>
+    </div></div>
+    <div class="f-row"><div class="f-item">
+      <label>质量检查情况</label>
+      <textarea id="f-quality" placeholder="检测结果、合格率、存在问题"></textarea>
+    </div></div>
+    <div class="f-row"><div class="f-item">
+      <label>现场安全情况 / 施工安全隐患</label>
+      <textarea id="f-safety" placeholder="安全防护、警示标志、隐患及整改"></textarea>
+    </div></div>
+    <div class="f-row"><div class="f-item">
+      <label>人员到岗情况</label>
+      <textarea id="f-staff" placeholder="管理人员、作业人员到岗情况"></textarea>
+    </div></div>
+  </div>
+
+  <div class="btn-row">
+    <button class="btn btn-ghost" onclick="saveRecord(false)">存草稿</button>
+    <button class="btn btn-pri" onclick="saveRecord(true)">保存日志</button>
+  </div>
+  <div style="height:10px"></div>
+</div>
+
+<!-- ===== 视图：日志列表 ===== -->
+<div class="view" id="view-list">
+  <div class="proj-tabs" id="projTabs"></div>
+  <div class="card" style="padding:12px">
+    <div class="cal-head">
+      <button class="cal-nav" onclick="moveMonth(-1)">‹</button>
+      <div class="cal-title" id="calTitle"></div>
+      <button class="cal-nav" onclick="moveMonth(1)">›</button>
+    </div>
+    <div class="cal-grid" id="calGrid"></div>
+    <div class="cal-foot">
+      <button class="cal-filter on" id="btnFilterAll" onclick="setFilterDate('')">全部</button>
+      <button class="cal-filter" id="btnFilterDay" onclick="clearFilterDay()">按日期筛选</button>
+    </div>
+  </div>
+  <div id="listBox"></div>
+</div>
+
+<!-- ===== 视图：设置 ===== -->
+<div class="view" id="view-set">
+  <div class="card">
+    <h3>项目管理</h3>
+    <div id="projList"></div>
+    <button class="btn btn-ghost" style="margin-top:10px" onclick="editProject()">+ 新建项目</button>
+    <div class="hint">每个项目独立归集日志，记日志时顶部切换。导出Word时抬头自动用对应项目名称。</div>
+  </div>
+  <div class="card">
+    <h3>全局默认</h3>
+    <div class="set-row"><label>巡查人姓名</label><input id="s-person" placeholder="用于照片水印"></div>
+  </div>
+  <div class="card">
+    <h3>数据管理</h3>
+    <div class="set-row"><label>本地记录条数</label><input id="s-count" readonly value="0"></div>
+    <button class="btn btn-ghost" style="margin-top:10px" onclick="exportAll()">导出全部记录为Word</button>
+    <button class="btn btn-warn" style="margin-top:10px" onclick="clearAll()">清空全部本地数据</button>
+    <div class="hint">说明：所有记录和照片仅保存在本机浏览器中，不上传服务器。清理浏览器缓存会删除数据，请定期导出Word备份。</div>
+  </div>
+</div>
+
+<!-- 项目编辑弹窗 -->
+<div class="modal-mask" id="projModal">
+  <div class="modal">
+    <h3 id="projModalTitle">新建项目</h3>
+    <input type="hidden" id="pe-id">
+    <div class="f-row"><div class="f-item"><label>项目名称（Word抬头）</label><input id="pe-name" placeholder="如：S218临安段养护工程"></div></div>
+    <div class="f-row"><div class="f-item"><label>承包单位</label><input id="pe-contractor"></div></div>
+    <div class="f-row"><div class="f-item"><label>监理单位</label><input id="pe-supervisor"></div></div>
+    <div class="f-row">
+      <div class="f-item"><label>合同号</label><input id="pe-contract"></div>
+      <div class="f-item"><label>编号</label><input id="pe-code" value="浙路JS112"></div>
+    </div>
+    <div style="display:flex;gap:10px;margin-top:14px">
+      <button class="btn btn-ghost" onclick="closeProjModal()">取消</button>
+      <button class="btn btn-pri" onclick="saveProject()">保存项目</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 视图：查看详情/导出 ===== -->
+<div class="view" id="view-detail">
+  <div id="detailBox"></div>
+</div>
+
+<div class="tabbar">
+  <button data-hash="#/new" onclick="location.hash='#/new'">
+    <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+    <span class="lb">记日志</span>
+  </button>
+  <button data-hash="#/list" onclick="location.hash='#/list'">
+    <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M8 9h8M8 13h8M8 17h5"/></svg>
+    <span class="lb">日志列表</span>
+  </button>
+  <button data-hash="#/set" onclick="location.hash='#/set'">
+    <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 0 0-.1-1.2l2-1.5-2-3.5-2.3 1a7 7 0 0 0-2-1.2L14 3h-4l-.6 2.6a7 7 0 0 0-2 1.2l-2.3-1-2 3.5 2 1.5a7 7 0 0 0 0 2.4l-2 1.5 2 3.5 2.3-1a7 7 0 0 0 2 1.2L10 21h4l.6-2.6a7 7 0 0 0 2-1.2l2.3 1 2-3.5-2-1.5a7 7 0 0 0 .1-1.2z"/></svg>
+    <span class="lb">设置</span>
+  </button>
+</div>
+
+<div class="toast" id="toast"></div>
+<input type="hidden" id="editId" value="">
+
+<script>
+/* ================= IndexedDB ================= */
+const DB = {
+  db:null,
+  open(){
+    return new Promise((res,rej)=>{
+      const rq = indexedDB.open('xungong_logs',1);
+      rq.onupgradeneeded = e=>{
+        const d = e.target.result;
+        if(!d.objectStoreNames.contains('records')){
+          d.createObjectStore('records',{keyPath:'id', autoIncrement:true});
+        }
+      };
+      rq.onsuccess = e=>{DB.db=e.target.result; res();};
+      rq.onerror = e=>rej(e);
+    });
+  },
+  put(rec){
+    return new Promise((res,rej)=>{
+      const tx=DB.db.transaction('records','readwrite');
+      const rq=tx.objectStore('records').put(rec);
+      rq.onsuccess=()=>res(rq.result);
+      rq.onerror=e=>rej(e);
+    });
+  },
+  getAll(){
+    return new Promise((res,rej)=>{
+      const tx=DB.db.transaction('records','readonly');
+      const rq=tx.objectStore('records').getAll();
+      rq.onsuccess=()=>res(rq.result);
+      rq.onerror=e=>rej(e);
+    });
+  },
+  get(id){
+    return new Promise((res,rej)=>{
+      const tx=DB.db.transaction('records','readonly');
+      const rq=tx.objectStore('records').get(id);
+      rq.onsuccess=()=>res(rq.result);
+      rq.onerror=e=>rej(e);
+    });
+  },
+  del(id){
+    return new Promise((res,rej)=>{
+      const tx=DB.db.transaction('records','readwrite');
+      const rq=tx.objectStore('records').delete(id);
+      rq.onsuccess=()=>res();
+      rq.onerror=e=>rej(e);
+    });
+  },
+  clear(){
+    return new Promise((res,rej)=>{
+      const tx=DB.db.transaction('records','readwrite');
+      const rq=tx.objectStore('records').clear();
+      rq.onsuccess=()=>res();
+      rq.onerror=e=>rej(e);
+    });
+  }
+};
+
+/* ================= 工具 ================= */
+function toast(msg){
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.classList.add('show');
+  clearTimeout(t._tm); t._tm=setTimeout(()=>t.classList.remove('show'),1800);
+}
+function $(id){return document.getElementById(id);}
+function todayStr(){
+  const d=new Date();
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+function weekOf(dateStr){
+  if(!dateStr) return '';
+  const d=new Date(dateStr+'T00:00:00');
+  return ['日','一','二','三','四','五','六'][d.getDay()];
+}
+function esc(s){return (s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+
+/* ================= 项目管理 ================= */
+function getProjects(){
+  try{
+    let p=JSON.parse(localStorage.getItem('xg_projects')||'[]');
+    if(!Array.isArray(p)) p=[];
+    if(p.length===0){
+      // 首次使用，自动建一个默认项目（兼容旧数据）
+      p=[{id:'default',name:'临安区"四好农村路"2026年提升工程',contractor:'',supervisor:'',contract:'',code:'浙路JS112'}];
+      localStorage.setItem('xg_projects',JSON.stringify(p));
+    }
+    return p;
+  }catch(e){ return [{id:'default',name:'默认项目',contractor:'',supervisor:'',contract:'',code:'浙路JS112'}]; }
+}
+function saveProjects(p){ localStorage.setItem('xg_projects',JSON.stringify(p)); }
+function getCurrentProjectId(){
+  return localStorage.getItem('xg_current_project')||'default';
+}
+function setCurrentProjectId(id){
+  localStorage.setItem('xg_current_project',id);
+}
+function getCurrentProject(){
+  const pid=getCurrentProjectId();
+  return getProjects().find(p=>p.id===pid)||getProjects()[0];
+}
+function getPerson(){
+  return (JSON.parse(localStorage.getItem('xg_settings')||'{}').person)||'';
+}
+function loadSettings(){
+  try{ $('s-person').value=getPerson(); }catch(e){}
+  refreshProjectSelect();
+  renderProjTabs();
+  renderProjList();
+}
+$('s-person').addEventListener('change',()=>{
+  const s=JSON.parse(localStorage.getItem('xg_settings')||'{}');
+  s.person=$('s-person').value;
+  localStorage.setItem('xg_settings',JSON.stringify(s));
+  toast('巡查人已保存');
+});
+function refreshProjectSelect(){
+  const sel=$('f-project'); if(!sel) return;
+  const ps=getProjects();
+  const cur=getCurrentProjectId();
+  sel.innerHTML=ps.map(p=>`<option value="${esc(p.id)}">${esc(p.name)}</option>`).join('');
+  sel.value=ps.find(p=>p.id===cur)?cur:ps[0].id;
+}
+function onProjectChange(){ setCurrentProjectId($('f-project').value); renderProjTabs(); }
+function manageProjects(){ location.hash='#/set'; }
+function renderProjTabs(){
+  const box=$('projTabs'); if(!box) return;
+  const ps=getProjects();
+  const cur=getCurrentProjectId();
+  box.innerHTML=`<button class="proj-tab ${cur==='all'?'on':''}" onclick="switchProj('all')">全部项目</button>`
+    + ps.map(p=>`<button class="proj-tab ${p.id===cur?'on':''}" onclick="switchProj('${p.id}')">${esc(p.name)}</button>`).join('');
+}
+function switchProj(id){
+  setCurrentProjectId(id);
+  refreshProjectSelect();
+  renderProjTabs();
+  renderList();
+}
+function renderProjList(){
+  const box=$('projList'); if(!box) return;
+  const ps=getProjects();
+  box.innerHTML=ps.map(p=>`
+    <div class="proj-item">
+      <div class="nm">${esc(p.name)}${p.contractor?`<div style="font-size:11px;color:var(--txt-3)">${esc(p.contractor)}</div>`:''}</div>
+      <div class="btns">
+        <button onclick="editProject('${p.id}')">编辑</button>
+        ${ps.length>1?`<button class="del" onclick="delProject('${p.id}')">删除</button>`:''}
+      </div>
+    </div>`).join('');
+}
+function editProject(id){
+  const p=id?getProjects().find(x=>x.id===id):null;
+  $('projModalTitle').textContent=p?'编辑项目':'新建项目';
+  $('pe-id').value=p?p.id:'';
+  $('pe-name').value=p?p.name:'';
+  $('pe-contractor').value=p?p.contractor||'':'';
+  $('pe-supervisor').value=p?p.supervisor||'':'';
+  $('pe-contract').value=p?p.contract||'':'';
+  $('pe-code').value=p?p.code||'浙路JS112':'浙路JS112';
+  $('projModal').classList.add('on');
+}
+function closeProjModal(){ $('projModal').classList.remove('on'); }
+function saveProject(){
+  const id=$('pe-id').value;
+  const name=$('pe-name').value.trim();
+  if(!name){toast('请填项目名称');return;}
+  const ps=getProjects();
+  const data={
+    id:id||('p'+Date.now()),
+    name,
+    contractor:$('pe-contractor').value.trim(),
+    supervisor:$('pe-supervisor').value.trim(),
+    contract:$('pe-contract').value.trim(),
+    code:$('pe-code').value.trim()||'浙路JS112'
+  };
+  if(id){
+    const i=ps.findIndex(p=>p.id===id);
+    if(i>=0) ps[i]=data;
+  }else{
+    ps.push(data);
+    setCurrentProjectId(data.id);
+  }
+  saveProjects(ps);
+  closeProjModal();
+  refreshProjectSelect(); renderProjTabs(); renderProjList();
+  toast('项目已保存');
+}
+function delProject(id){
+  if(!confirm('删除项目后，该项目下的日志会归到"全部项目"，不会被删除。确定？'))return;
+  let ps=getProjects().filter(p=>p.id!==id);
+  if(ps.length===0) ps=[{id:'default',name:'默认项目',contractor:'',supervisor:'',contract:'',code:'浙路JS112'}];
+  saveProjects(ps);
+  if(getCurrentProjectId()===id) setCurrentProjectId(ps[0].id);
+  refreshProjectSelect(); renderProjTabs(); renderProjList(); renderList();
+}
+
+/* ================= 路由 ================= */
+const titles={'#/new':'公路巡查日志','#/list':'日志列表','#/set':'设置'};
+function router(){
+  const h=location.hash||'#/new';
+  const sub=h.split('?')[0];
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('on'));
+  document.querySelectorAll('.tabbar button').forEach(b=>b.classList.toggle('on',b.dataset.hash===sub));
+  $('topTitle').textContent = sub==='#/detail'?'日志详情':(titles[sub]||'公路巡查日志');
+  $('btnBack').style.visibility = sub==='#/detail'?'visible':'hidden';
+  $('topRight').innerHTML='';
+  if(sub==='#/new'){ $('view-new').classList.add('on'); }
+  else if(sub==='#/list'){ $('view-list').classList.add('on'); renderList(); }
+  else if(sub==='#/set'){ $('view-set').classList.add('on'); refreshCount(); }
+  else if(sub==='#/detail'){
+    $('view-detail').classList.add('on');
+    const id=new URLSearchParams(location.hash.split('?')[1]).get('id');
+    renderDetail(Number(id));
+  }
+}
+function goBack(){ location.hash='#/list'; }
+window.addEventListener('hashchange',router);
+
+/* ================= 病害chips ================= */
+let selectedDiseases=new Set();
+document.getElementById('chipsDisease').addEventListener('click',e=>{
+  const c=e.target.closest('.chip'); if(!c) return;
+  const v=c.dataset.v;
+  if(v==='无病害'){
+    selectedDiseases.clear(); selectedDiseases.add('无病害');
+    document.querySelectorAll('#chipsDisease .chip').forEach(x=>x.classList.toggle('on',x.dataset.v==='无病害'));
+    return;
+  }
+  document.querySelectorAll('#chipsDisease .chip[data-v="无病害"]').forEach(x=>x.classList.remove('on'));
+  if(selectedDiseases.has('无病害')) selectedDiseases.delete('无病害');
+  if(selectedDiseases.has(v)){selectedDiseases.delete(v); c.classList.remove('on');}
+  else{selectedDiseases.add(v); c.classList.add('on');}
+});
+
+/* ================= 日期联动 ================= */
+$('f-date').value=todayStr();
+$('f-week').textContent='星期'+weekOf(todayStr());
+$('f-date').addEventListener('change',()=>{$('f-week').textContent='星期'+weekOf($('f-date').value);});
+
+/* ================= 照片：采集+水印 ================= */
+let photos=[]; // {blob, caption}
+function pickPhoto(){ $('fileInput').click(); }
+$('fileInput').addEventListener('change',async e=>{
+  const f=e.target.files[0]; if(!f) return;
+  try{
+    toast('正在处理照片…');
+    const wb=await watermark(f);
+    const cap=prompt('给这张照片加备注（可留空）：','')||'';
+    photos.push({blob:wb, caption:cap});
+    renderPhotos();
+    toast('照片已加入');
+  }catch(err){ alert('照片处理失败：'+err.message); }
+  e.target.value='';
+});
+
+function watermark(blob){
+  return new Promise((resolve,reject)=>{
+    const img=new Image();
+    const url=URL.createObjectURL(blob);
+    img.onload=()=>{
+      URL.revokeObjectURL(url);
+      // 限制最长边 1600
+      const MAX=1600;
+      let w=img.width,h=img.height;
+      if(Math.max(w,h)>MAX){
+        const k=MAX/Math.max(w,h); w=Math.round(w*k); h=Math.round(h*k);
+      }
+      const bandH=Math.max(46,Math.round(h*0.09));
+      const cv=document.createElement('canvas');
+      cv.width=w; cv.height=h;
+      const ctx=cv.getContext('2d');
+      ctx.drawImage(img,0,0,w,h);
+      // 半透明底条
+      ctx.fillStyle='rgba(0,0,0,0.6)';
+      ctx.fillRect(0,h-bandH,w,bandH);
+      const pad=Math.round(w*0.025);
+      const fs=Math.max(13,Math.round(bandH*0.32));
+      ctx.font=`${fs}px "Microsoft YaHei",sans-serif`;
+      ctx.fillStyle='#fff'; ctx.textBaseline='middle';
+      const now=new Date();
+      const ts=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0')+'-'+String(now.getDate()).padStart(2,'0')+' '+String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0');
+      const stake=$('f-stake').value||'—';
+      const person=getPerson()||'—';
+      const line1=`时间：${ts}`;
+      const line2=`桩号：${stake}    巡查人：${person}`;
+      ctx.fillText(line1,pad,h-bandH+bandH*0.30);
+      ctx.fillText(line2,pad,h-bandH+bandH*0.72);
+      cv.toBlob(b=>resolve(b),'image/jpeg',0.85);
+    };
+    img.onerror=err=>{URL.revokeObjectURL(url);reject(err);};
+    img.src=url;
+  });
+}
+
+function renderPhotos(){
+  const grid=$('photoGrid');
+  grid.innerHTML='';
+  photos.forEach((p,i)=>{
+    const cell=document.createElement('div');
+    cell.className='photo-cell';
+    const im=document.createElement('img');
+    im.src=URL.createObjectURL(p.blob);
+    cell.appendChild(im);
+    if(p.caption){
+      const c=document.createElement('div'); c.className='cap'; c.textContent=p.caption; cell.appendChild(c);
+    }
+    const del=document.createElement('button');
+    del.className='del'; del.textContent='×';
+    del.onclick=()=>{photos.splice(i,1); renderPhotos();};
+    cell.appendChild(del);
+    grid.appendChild(cell);
+  });
+  const add=document.createElement('div');
+  add.className='photo-add';
+  add.innerHTML='<div class="plus">+</div><span>拍照/相册</span>';
+  add.onclick=pickPhoto;
+  grid.appendChild(add);
+}
+
+/* ================= 保存记录 ================= */
+function collectForm(){
+  return {
+    projectId:($('f-project')?$('f-project').value:getCurrentProjectId()),
+    unit:$('f-unit').value, part:$('f-part').value, sub:$('f-sub').value,
+    stake:$('f-stake').value, date:$('f-date').value, week:$('f-week').textContent,
+    weather:$('f-weather').value, tmax:$('f-tmax').value, tmin:$('f-tmin').value,
+    content:$('f-content').value,
+    diseases:Array.from(selectedDiseases),
+    traffic:$('f-traffic').value, resource:$('f-resource').value,
+    quality:$('f-quality').value, safety:$('f-safety').value, staff:$('f-staff').value,
+    photos:photos.map(p=>({blob:p.blob, caption:p.caption})),
+    updatedAt:new Date().toISOString()
+  };
+}
+async function saveRecord(publish){
+  const rec=collectForm();
+  if(!rec.date){toast('请选择施工日期');return;}
+  if(!rec.content && photos.length===0){toast('请填写施工内容或拍照');return;}
+  const id=$('editId').value;
+  rec.publish=publish;
+  if(id){ rec.id=Number(id); }
+  await DB.put(rec);
+  toast(publish?'日志已保存（本地）':'草稿已保存');
+  setTimeout(()=>{location.hash='#/list'; resetForm();},600);
+}
+function resetForm(){
+  $('editId').value='';
+  ['f-unit','f-part','f-sub','f-stake','f-tmax','f-tmin','f-content',
+   'f-traffic','f-resource','f-quality','f-safety','f-staff'].forEach(i=>$(i).value='');
+  $('f-date').value=todayStr(); $('f-week').textContent='星期'+weekOf(todayStr());
+  $('f-weather').value='';
+  selectedDiseases.clear();
+  document.querySelectorAll('#chipsDisease .chip').forEach(c=>c.classList.remove('on'));
+  photos=[]; renderPhotos();
+}
+
+/* ================= 日历与列表 ================= */
+let calYear, calMonth, filterDate='';
+async function renderList(){
+  const all=await DB.getAll();
+  // 初始化日历月份到今天
+  if(!calYear){
+    const n=new Date(); calYear=n.getFullYear(); calMonth=n.getMonth();
+  }
+  renderCalendar(byProj);
+  // 筛选：项目
+  const curPid=getCurrentProjectId();
+  let byProj=all.slice();
+  if(curPid!=='all') byProj=byProj.filter(r=>(r.projectId||'default')===curPid);
+  // 筛选：日期
+  let list=byProj.slice();
+  if(filterDate) list=list.filter(r=>r.date===filterDate);
+  list.sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+  const box=$('listBox');
+  $('btnFilterAll').classList.toggle('on',!filterDate);
+  $('btnFilterDay').classList.toggle('on',!!filterDate);
+  $('btnFilterDay').textContent = filterDate?('已选：'+filterDate+'（点取消）'):'按日期筛选';
+  if(list.length===0){
+    const projName=curPid==='all'?'':('（'+(getProjects().find(p=>p.id===curPid)||{}).name+'）');
+    box.innerHTML=filterDate
+      ? `<div class="empty"><div class="big">📭</div>${filterDate}${projName} 没有巡查记录</div>`
+      : `<div class="empty"><div class="big">📋</div>${projName}还没有巡查记录<br>点下方"记日志"开始</div>`;
+    return;
+  }
+  box.innerHTML='';
+  list.forEach(r=>{
+    const item=document.createElement('div');
+    item.className='log-item';
+    const tags=(r.diseases||[]).map(d=>`<span class="tag">${esc(d)}</span>`).join('');
+    item.innerHTML=`
+      <div class="lt">${esc(r.date||'')} ${esc(r.week||'')} · ${esc(r.stake||'未填桩号')}</div>
+      <div class="lm">${esc(r.unit||'')} ${r.part?'/ '+esc(r.part):''} ${r.sub?'/ '+esc(r.sub):''}<br>
+        天气：${esc(r.weather||'—')}　照片：${(r.photos||[]).length}张
+      </div>
+      <div class="ltags">${tags}</div>`;
+    item.onclick=()=>{location.hash='#/detail?id='+r.id;};
+    box.appendChild(item);
+  });
+}
+
+function renderCalendar(all){
+  $('calTitle').textContent=calYear+'年'+(calMonth+1)+'月';
+  const grid=$('calGrid');
+  grid.innerHTML='';
+  ['日','一','二','三','四','五','六'].forEach(d=>{
+    const el=document.createElement('div'); el.className='dow'; el.textContent=d; grid.appendChild(el);
+  });
+  // 有记录的日期集合
+  const has={};
+  all.forEach(r=>{ if(r.date) has[r.date]=true; });
+  const first=new Date(calYear,calMonth,1);
+  const startDow=first.getDay(); // 0=周日
+  const daysInMonth=new Date(calYear,calMonth+1,0).getDate();
+  const today=todayStr();
+  for(let i=0;i<startDow;i++){
+    const prev=new Date(calYear,calMonth,0-i+1);
+    grid.appendChild(calCell(prev,true,has,today));
+  }
+  for(let d=1;d<=daysInMonth;d++){
+    const dt=new Date(calYear,calMonth,d);
+    grid.appendChild(calCell(dt,false,has,today));
+  }
+  // 补齐到7的倍数
+  const total=startDow+daysInMonth;
+  const tail=(7-total%7)%7;
+  for(let i=1;i<=tail;i++){
+    grid.appendChild(calCell(new Date(calYear,calMonth+1,i),true,has,today));
+  }
+}
+function calCell(dt,other,has,today){
+  const y=dt.getFullYear(),m=String(dt.getMonth()+1).padStart(2,'0'),d=String(dt.getDate()).padStart(2,'0');
+  const ds=y+'-'+m+'-'+d;
+  const el=document.createElement('div');
+  el.className='cal-cell'+(other?' other':'')+(ds===today?' today':'')+(ds===filterDate?' selected':'');
+  el.innerHTML=`<span>${Number(d)}</span>${has[ds]?'<div class="dot"></div>':''}`;
+  el.onclick=()=>{
+    if(other){
+      // 点到上月/下月日期，跳过去
+      calMonth=dt.getMonth(); calYear=dt.getFullYear();
+    }
+    filterDate=ds;
+    renderList();
+  };
+  return el;
+}
+function moveMonth(n){
+  calMonth+=n;
+  if(calMonth<0){calMonth=11;calYear--;}
+  if(calMonth>11){calMonth=0;calYear++;}
+  renderList();
+}
+function setFilterDate(ds){ filterDate=ds||''; renderList(); }
+function clearFilterDay(){ filterDate=''; renderList(); }
+
+/* ================= 详情 ================= */
+async function renderDetail(id){
+  const r=await DB.get(id);
+  const box=$('detailBox');
+  if(!r){box.innerHTML='<div class="empty">记录不存在</div>';return;}
+  let phHtml='';
+  for(const p of (r.photos||[])){
+    phHtml+=`<div style="margin-bottom:10px"><img src="${URL.createObjectURL(p.blob)}" style="width:100%;border-radius:8px;border:1px solid var(--line)">
+      ${p.caption?`<div style="font-size:12px;color:var(--txt-2);margin-top:4px">备注：${esc(p.caption)}</div>`:''}</div>`;
+  }
+  const proj=getProjects().find(p=>p.id===(r.projectId||'default'));
+  const row=(k,v)=>`<div class="f-row"><div class="f-item"><label>${k}</label><div style="padding:8px 0">${esc(v||'—')}</div></div></div>`;
+  box.innerHTML=`
+    <div class="card">
+      <h3>所属项目</h3>
+      <div style="font-weight:600;color:var(--blue)">${esc(proj?proj.name:'默认项目')}</div>
+    </div>
+    <div class="card">
+      <h3>基本信息</h3>
+      ${row('施工日期',r.date+' '+r.week)}
+      ${row('桩号部位',r.stake)}
+      ${row('单位/分部/分项',[r.unit,r.part,r.sub].filter(Boolean).join(' / '))}
+      ${row('天气/气温',(r.weather||'—')+'　最高'+(r.tmax||'—')+'℃　最低'+(r.tmin||'—')+'℃')}
+    </div>
+    <div class="card"><h3>施工内容</h3><div style="white-space:pre-wrap">${esc(r.content||'—')}</div>${phHtml}</div>
+    <div class="card"><h3>路面病害</h3>${(r.diseases||[]).map(d=>`<span class="tag" style="display:inline-block;margin:2px">${esc(d)}</span>`).join('')||'—'}</div>
+    <div class="card"><h3>交安设施</h3><div style="white-space:pre-wrap">${esc(r.traffic||'—')}</div></div>
+    <div class="card"><h3>资源投入</h3><div style="white-space:pre-wrap">${esc(r.resource||'—')}</div></div>
+    <div class="card"><h3>质量检查</h3><div style="white-space:pre-wrap">${esc(r.quality||'—')}</div></div>
+    <div class="card"><h3>现场安全</h3><div style="white-space:pre-wrap">${esc(r.safety||'—')}</div></div>
+    <div class="card"><h3>人员到岗</h3><div style="white-space:pre-wrap">${esc(r.staff||'—')}</div></div>
+    <div class="btn-row">
+      <button class="btn btn-ghost" onclick="editRecord(${r.id})">编辑</button>
+      <button class="btn btn-pri" onclick="exportOne(${r.id})">导出Word</button>
+    </div>
+    <div style="height:10px"></div>
+    <button class="btn btn-warn" onclick="delRecord(${r.id})">删除此记录</button>
+    <div style="height:20px"></div>`;
+}
+async function editRecord(id){
+  const r=await DB.get(id); if(!r)return;
+  $('editId').value=id;
+  if(r.projectId){ $('f-project').value=r.projectId; }
+  $('f-unit').value=r.unit||''; $('f-part').value=r.part||''; $('f-sub').value=r.sub||'';
+  $('f-stake').value=r.stake||''; $('f-date').value=r.date||todayStr();
+  $('f-week').textContent='星期'+weekOf($('f-date').value);
+  $('f-weather').value=r.weather||''; $('f-tmax').value=r.tmax||''; $('f-tmin').value=r.tmin||'';
+  $('f-content').value=r.content||'';
+  $('f-traffic').value=r.traffic||''; $('f-resource').value=r.resource||'';
+  $('f-quality').value=r.quality||''; $('f-safety').value=r.safety||''; $('f-staff').value=r.staff||'';
+  selectedDiseases=new Set(r.diseases||[]);
+  document.querySelectorAll('#chipsDisease .chip').forEach(c=>c.classList.toggle('on',selectedDiseases.has(c.dataset.v)));
+  photos=(r.photos||[]).map(p=>({blob:p.blob,caption:p.caption}));
+  renderPhotos();
+  location.hash='#/new';
+  window.scrollTo(0,0);
+}
+async function delRecord(id){
+  if(!confirm('确定删除这条记录？'))return;
+  await DB.del(id); toast('已删除'); location.hash='#/list';
+}
+
+/* ================= 清空/统计 ================= */
+async function refreshCount(){
+  const all=await DB.getAll();
+  $('s-count').value=all.length+' 条';
+}
+async function clearAll(){
+  if(!confirm('将删除本机所有巡查记录和照片，此操作不可恢复！确定？'))return;
+  await DB.clear(); toast('已清空'); refreshCount();
+}
+
+/* ================= Word 导出 ================= */
+async function blobToBase64(blob){
+  return new Promise((res,rej)=>{
+    const fr=new FileReader();
+    fr.onload=()=>res(fr.result.split(',')[1]);
+    fr.onerror=rej; fr.readAsDataURL(blob);
+  });
+}
+async function buildDocx(rec){
+  const proj=getProjects().find(p=>p.id===(rec.projectId||'default'))||getProjects()[0];
+  const S={contractor:proj.contractor,supervisor:proj.supervisor,contract:proj.contract,code:proj.code||'浙路JS112'};
+  const person=getPerson();
+  const {Document,Packer,Paragraph,TextRun,Table,TableRow,TableCell,WidthType,
+    AlignmentType,ImageRun,VerticalAlign,BorderStyle}=docx;
+  const border={style:BorderStyle.SINGLE,size:6,color:'000000'};
+  const borders={top:border,bottom:border,left:border,right:border};
+  const cell=(children,opts={})=>new TableCell({
+    children:Array.isArray(children)?children:[children],
+    borders, verticalAlign:VerticalAlign.CENTER,
+    columnSpan:opts.span, rowSpan:opts.rowSpan,
+    width:opts.width?{size:opts.width,type:WidthType.PERCENTAGE}:undefined,
+    margins:{top:80,bottom:80,left:100,right:100}
+  });
+  const p=(text,opts={})=>new Paragraph({
+    alignment:opts.align||AlignmentType.LEFT,
+    children:[new TextRun({text:text||'',bold:!!opts.bold,size:opts.size||21,font:'宋体'})]
+  });
+  const lines=(text)=>{
+    if(!text) return [p('')];
+    return text.split('\n').map(l=>p(l||' '));
+  };
+  // 照片
+  let photoParas=[];
+  for(const ph of (rec.photos||[])){
+    const b64=await blobToBase64(ph.blob);
+    photoParas.push(new Paragraph({
+      alignment:AlignmentType.CENTER,
+      children:[new ImageRun({data:b64,transformation:{width:280,height:210}})]
+    }));
+    if(ph.caption) photoParas.push(p('备注：'+ph.caption,{align:AlignmentType.CENTER,size:18}));
+  }
+  const diseaseStr=(rec.diseases&&rec.diseases.length)?rec.diseases.join('、'):'—';
+
+  const rows=[
+    // 标题
+    new TableRow({children:[cell([p((proj.name||'施工日志')+'——施工日志',{align:AlignmentType.CENTER,bold:true,size:28})],{span:7})]}),
+    // 承包/监理
+    new TableRow({children:[
+      cell(p('承包单位：'+(S.contractor||''),{size:20}),{span:3}),
+      cell(p('监理单位：'+(S.supervisor||''),{size:20}),{span:4})
+    ]}),
+    // 合同号/编号
+    new TableRow({children:[
+      cell(p('合 同 号：'+(S.contract||''),{size:20}),{span:3}),
+      cell(p('编    号：'+(S.code||'浙路JS112'),{size:20}),{span:4})
+    ]}),
+    // 单位工程/分项工程/施工日期
+    new TableRow({children:[
+      cell(p('单位工程',{align:AlignmentType.CENTER,size:20}),{width:12}),
+      cell(p(rec.unit||' ',{size:20}),{width:21}),
+      cell(p('分项工程',{align:AlignmentType.CENTER,size:20}),{width:12}),
+      cell(p(rec.sub||' ',{size:20}),{width:21}),
+      cell(p('施工日期',{align:AlignmentType.CENTER,size:20}),{width:12}),
+      cell(p((rec.date||'')+' '+rec.week,{size:20}),{span:2,width:22})
+    ]}),
+    // 分部工程/桩号/检测日期
+    new TableRow({children:[
+      cell(p('分部工程',{align:AlignmentType.CENTER,size:20})),
+      cell(p(rec.part||' ',{size:20})),
+      cell(p('桩号、部位',{align:AlignmentType.CENTER,size:20})),
+      cell(p(rec.stake||' ',{size:20})),
+      cell(p('记录日期',{align:AlignmentType.CENTER,size:20})),
+      cell(p(rec.date||' ',{size:20}),{span:2})
+    ]}),
+    // 天气气温
+    new TableRow({children:[
+      cell(p(''+rec.date+' 星期'+(rec.week||''),{align:AlignmentType.CENTER,size:19}),{rowSpan:2}),
+      cell(p('天  气',{align:AlignmentType.CENTER,size:19})),
+      cell(p(rec.weather||' ',{size:19}),{rowSpan:2}),
+      cell(p('气  温',{align:AlignmentType.CENTER,size:19}),{rowSpan:2}),
+      cell(p('最高 '+ (rec.tmax||'') +' ℃',{size:19}),{span:2,rowSpan:1})
+    ]}),
+    new TableRow({children:[
+      cell(p('最低 '+ (rec.tmin||'') +' ℃',{size:19}),{span:2})
+    ]}),
+    // 施工内容
+    new TableRow({children:[
+      cell(p('施工内容\n及完成情况',{align:AlignmentType.CENTER,bold:true,size:20}),{width:12}),
+      cell([...lines(rec.content),p('路面病害：'+diseaseStr,{size:20}),...photoParas],{span:6})
+    ]}),
+    // 资源投入
+    new TableRow({children:[
+      cell(p('资源投入情况',{align:AlignmentType.CENTER,bold:true,size:20}),{width:12}),
+      cell(lines(rec.resource),{span:6})
+    ]}),
+    // 交安设施
+    new TableRow({children:[
+      cell(p('交安设施情况',{align:AlignmentType.CENTER,bold:true,size:20}),{width:12}),
+      cell(lines(rec.traffic),{span:6})
+    ]}),
+    // 质量检查
+    new TableRow({children:[
+      cell(p('质量检查情况',{align:AlignmentType.CENTER,bold:true,size:20}),{width:12}),
+      cell(lines(rec.quality),{span:6})
+    ]}),
+    // 现场安全
+    new TableRow({children:[
+      cell(p('现场安全情况',{align:AlignmentType.CENTER,bold:true,size:20}),{width:12}),
+      cell(lines(rec.safety),{span:6})
+    ]}),
+    // 人员到岗
+    new TableRow({children:[
+      cell(p('人员到岗情况',{align:AlignmentType.CENTER,bold:true,size:20}),{width:12}),
+      cell(lines(rec.staff),{span:6})
+    ]}),
+  ];
+
+  const table=new Table({
+    rows,
+    width:{size:100,type:WidthType.PERCENTAGE}
+  });
+  const doc=new Document({
+    sections:[{children:[
+      table,
+      p('巡查人：'+(person||''),{size:20}),
+      p('导出时间：'+new Date().toLocaleString('zh-CN'),{size:18})
+    ]}]
+  });
+  return Packer.toBlob(doc);
+}
+async function exportOne(id){
+  toast('正在生成Word…');
+  try{
+    const r=await DB.get(id);
+    const blob=await buildDocx(r);
+    const a=document.createElement('a');
+    a.href=URL.createObjectURL(blob);
+    a.download=`施工日志_${r.date||''}_${r.stake||''}.docx`;
+    document.body.appendChild(a); a.click();
+    setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},1000);
+    toast('Word已导出');
+  }catch(e){ alert('导出失败：'+e.message); console.error(e); }
+}
+async function exportAll(){
+  const all=await DB.getAll();
+  if(!all.length){toast('暂无记录');return;}
+  if(!confirm('将把 '+all.length+' 条记录分别导出为多个Word文件，继续？'))return;
+  for(let i=0;i<all.length;i++){
+    toast(`导出 ${i+1}/${all.length}…`);
+    await exportOne(all[i].id);
+    await new Promise(r=>setTimeout(r,800));
+  }
+  toast('全部导出完成');
+}
+
+/* ================= 启动 ================= */
+(async function init(){
+  await DB.open();
+  loadSettings(); renderPhotos();
+  if(!location.hash) location.hash='#/new';
+  router();
+})();
+</script>
+</body>
+</html>
