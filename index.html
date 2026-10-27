@@ -266,7 +266,7 @@
             color:#fff;
             font-size:14px;
         }
-        /*打印专用样式 A4 适配筑记样式，图片自动流式排版*/
+        /*打印专用样式 A4 【3张一行】 */
         @media print{
             @page{
                 size:A4 portrait;
@@ -283,16 +283,31 @@
                 background:#fff;
             }
             .tab-bar,.save-btn-wrap,.list-top-bar,.del-btn,.export-btn,.print-btn{display:none !important;}
-            #printWrap .photo-row{
-                display:flex;
-                flex-wrap:wrap;
-                gap:6mm;
-                margin:5mm 0;
+
+            #printWrap .img-wrap{
+                overflow:hidden;
+                margin:8mm 0;
+                page-break-inside:avoid;
+                mso-page-break-inside:avoid;
             }
-            #printWrap .photo-row img{
-                max-width:55mm;
-                max-height:45mm;
-                border:0.3mm solid #ccc;
+            #printWrap .img-item{
+                width:calc((100% - 16mm)/3);
+                float:left;
+                margin-right:8mm;
+                margin-bottom:8mm;
+                page-break-inside:avoid;
+                mso-page-break-inside:avoid;
+            }
+            #printWrap .img-item:nth-child(3n){
+                margin-right:0;
+            }
+            #printWrap .img-item img{
+                width:100%;
+                height:auto;
+                max-height:70mm;
+                object-fit:contain;
+                display:block;
+                border:0.2mm solid #aaa;
             }
         }
         #importFileInput{display:none;}
@@ -702,9 +717,9 @@ document.getElementById('saveLogBtn').onclick = function(){
 function printItem(logItem){
     let imgHtml = "";
     if(logItem.photos && logItem.photos.length>0){
-        imgHtml += `<div class="photo-row">`;
+        imgHtml += `<div class="img-wrap">`;
         logItem.photos.forEach(p=>{
-            imgHtml += `<img src="${p}">`;
+            imgHtml += `<div class="img-item"><img src="${p}"></div>`;
         })
         imgHtml += `</div>`;
     }
@@ -736,23 +751,29 @@ function printItem(logItem){
 `;
     const wrapDom = document.getElementById('printWrap');
     wrapDom.innerHTML = printHtml;
-    //修复打印触发逻辑
     setTimeout(()=>{
         window.print();
         wrapDom.innerHTML = "";
     },100);
 }
 
-// ========== 导出单条word(A4筑记同款版式，图片流式排版) ==========
+// ========== 导出单条word【3张一行，浮动布局Word高兼容，限制图片最大高度，防止一张一页】 ==========
 function exportItemWord(logItem){
     let imgHtml = "";
     if(logItem.photos && logItem.photos.length>0){
-        imgHtml += `<div style="display:flex;flex-wrap:wrap;gap:12px;margin:10px 0;">`;
+        imgHtml += `
+<div style="overflow:hidden;margin:12px 0;page-break-inside:avoid;mso-page-break-inside:avoid;">
+`;
         logItem.photos.forEach(p=>{
-            imgHtml += `<img src="${p}" style="width:220px;height:auto;border:1px solid #ccc;">`;
+            imgHtml += `
+<div style="width:calc((100% - 24px)/3);float:left;margin-right:12px;margin-bottom:12px;page-break-inside:avoid;mso-page-break-inside:avoid;">
+    <img src="${p}" style="width:100%;height:auto;max-height:220px;object-fit:contain;display:block;border:1px solid #aaa;">
+</div>
+`;
         })
-        imgHtml += `</div>`;
+        imgHtml += `</div><div style="clear:both;"></div>`;
     }
+
     const html = `
 <html xmlns:o="urn:schemas-microsoft-com:office:office">
 <head>
