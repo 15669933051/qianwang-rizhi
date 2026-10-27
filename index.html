@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>公路巡查日志</title>
+    <style>
+        *{
+            box-sizing: border-box;
+            margin:0;
+            padding:0;
+            font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", sans-serif;
+        }
+        body{
+            background:#f7f8fa;
+            padding-bottom:70px;
+        }
+        .header{
+            background:#2478e0;
+            color:#fff;
+            text-align:center;
+            padding:18px 0;
+            font-size:20px;
+            font-weight:500;
+        }
+        .wrap{
+            padding:16px;
+        }
+        .item{
+            margin-bottom:18px;
+        }
+        .label-title{
+            font-size:16px;
+            color:#333;
+            margin-bottom:8px;
+            display:block;
+        }
+        input, textarea, select{
+            width:100%;
+            border:1px solid #cccccc;
+            border-radius:8px;
+            padding:14px 12px;
+            font-size:17px;
+            background:#fff;
+        }
+        textarea{
+            min-height:100px;
+            resize:vertical;
+        }
+        .check-row{
+            display:flex;
+            gap:22px;
+            flex-wrap:wrap;
+            padding:8px 0;
+        }
+        .check-item{
+            display:flex;
+            align-items:center;
+            gap:6px;
+            font-size:17px;
+        }
+        .check-item input{
+            width:auto;
+            transform:scale(1.15);
+        }
+        .tab-bar{
+            position:fixed;
+            bottom:0;
+            left:0;
+            width:100%;
+            display:flex;
+            background:#fff;
+            border-top:1px solid #ddd;
+        }
+        .tab{
+            flex:1;
+            text-align:center;
+            padding:14px 0;
+            font-size:16px;
+            color:#666;
+        }
+        .tab.active{
+            color:#2478e0;
+        }
+        .page{
+            display:none;
+        }
+        .page.active{
+            display:block;
+        }
+        .log-card{
+            background:#fff;
+            border-radius:8px;
+            padding:14px;
+            margin-bottom:12px;
+        }
+        .log-card p{
+            line-height:1.6;
+            color:#444;
+        }
+        .del-btn{
+            margin-top:8px;
+            color:#e53935;
+            border:none;
+            background:none;
+            font-size:15px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">公路巡查日志</div>
+    <div class="wrap">
+        <!-- 记日志页面 -->
+        <div id="page-form" class="page active">
+            <div class="item">
+                <span class="label-title">选择项目</span>
+                <select id="project">
+                    <option>默认项目</option>
+                </select>
+            </div>
+            <div class="item">
+                <span class="label-title">巡查日期</span>
+                <input type="date" id="date">
+            </div>
+            <div class="item">
+                <span class="label-title">天气</span>
+                <input type="text" id="weather" placeholder="例如：晴/阴/小雨">
+            </div>
+            <div class="item">
+                <span class="label-title">巡查桩号范围</span>
+                <input type="text" id="station" placeholder="K0+000 ~ K2+300">
+            </div>
+            <div class="item">
+                <span class="label-title">路面病害（可多选）</span>
+                <div class="check-row">
+                    <label class="check-item">
+                        <input type="checkbox" value="裂缝" class="disease"> 裂缝
+                    </label>
+                    <label class="check-item">
+                        <input type="checkbox" value="坑槽" class="disease"> 坑槽
+                    </label>
+                    <label class="check-item">
+                        <input type="checkbox" value="沉陷" class="disease"> 沉陷
+                    </label>
+                    <label class="check-item">
+                        <input type="checkbox" value="积水" class="disease"> 积水
+                    </label>
+                </div>
+                <input type="text" id="diseaseOther" placeholder="其他病害补充" style="margin-top:8px;">
+            </div>
+            <div class="item">
+                <span class="label-title">交安设施损坏情况</span>
+                <textarea id="traffic" placeholder="护栏、标志、标线等"></textarea>
+            </div>
+            <div class="item">
+                <span class="label-title">施工安全隐患</span>
+                <textarea id="danger" placeholder="现场安全隐患描述"></textarea>
+            </div>
+            <div class="item">
+                <span class="label-title">人员到岗情况</span>
+                <textarea id="staff" placeholder="填写巡查人员到岗情况"></textarea>
+            </div>
+        </div>
+        <!-- 日志列表页面 -->
+        <div id="page-list" class="page">
+            <div id="listBox"></div>
+        </div>
+        <!-- 设置页面 -->
+        <div id="page-set" class="page">
+            <div class="item">
+                <span class="label-title">设置</span>
+                <textarea placeholder="预留扩展"></textarea>
+            </div>
+        </div>
+    </div>
+    <div class="tab-bar">
+        <div class="tab active" data-page="page-form">记日志</div>
+        <div class="tab" data-page="page-list">日志列表</div>
+        <div class="tab" data-page="page-set">设置</div>
+    </div>
+
+<script>
+// 初始化日期为今天
+const today = new Date();
+const y = today.getFullYear();
+const m = String(today.getMonth()+1).padStart(2,'0');
+const d = String(today.getDate()).padStart(2,'0');
+document.getElementById('date').value = `${y}-${m}-${d}`;
+
+// Tab切换
+const tabs = document.querySelectorAll('.tab');
+tabs.forEach(tab=>{
+    tab.onclick = ()=>{
+        tabs.forEach(t=>t.classList.remove('active'));
+        tab.classList.add('active');
+        const targetId = tab.dataset.page;
+        document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+        document.getElementById(targetId).classList.add('active');
+        if(targetId === 'page-list') renderList();
+    }
+})
+
+// 获取日志数组
+function getLogs(){
+    const raw = localStorage.getItem('roadLog');
+    return raw ? JSON.parse(raw) : [];
+}
+// 保存日志数组
+function saveLogs(arr){
+    localStorage.setItem('roadLog', JSON.stringify(arr));
+}
+
+// 保存表单（点击“记日志”逻辑，我把保存动作绑定在tab文字区域，如果你想要独立保存按钮我再加）
+document.querySelector('[data-page="page-form"]').addEventListener('click',()=>{
+    // 只在当前是表单页时执行保存
+    if(!document.getElementById('page-form').classList.contains('active')) return;
+    const project = document.getElementById('project').value;
+    const date = document.getElementById('date').value;
+    const weather = document.getElementById('weather').value;
+    const station = document.getElementById('station').value;
+    const diseaseCheck = Array.from(document.querySelectorAll('.disease:checked')).map(el=>el.value);
+    const diseaseOther = document.getElementById('diseaseOther').value;
+    const traffic = document.getElementById('traffic').value;
+    const danger = document.getElementById('danger').value;
+    const staff = document.getElementById('staff').value;
+
+    if(!date || !station){
+        alert('巡查日期、桩号范围不能为空！');
+        return;
+    }
+    const log = {
+        id: Date.now(),
+        project,date,weather,station,
+        diseaseCheck, diseaseOther,
+        traffic,danger,staff
+    };
+    const logs = getLogs();
+    logs.unshift(log);
+    saveLogs(logs);
+    alert('日志保存成功！');
+    // 清空病害勾选，保留日期
+    document.querySelectorAll('.disease').forEach(cb=>cb.checked=false);
+    document.getElementById('diseaseOther').value='';
+    document.getElementById('weather').value='';
+    document.getElementById('station').value='';
+    document.getElementById('traffic').value='';
+    document.getElementById('danger').value='';
+    document.getElementById('staff').value='';
+})
+
+// 渲染列表
+function renderList(){
+    const box = document.getElementById('listBox');
+    const logs = getLogs();
+    if(logs.length === 0){
+        box.innerHTML = '<div class="log-card">暂无巡查日志记录</div>';
+        return;
+    }
+    let html = '';
+    logs.forEach(item=>{
+        const disStr = [...item.diseaseCheck, item.diseaseOther].filter(s=>s).join('、');
+        html += `
+        <div class="log-card">
+            <p><b>项目：</b>${item.project}</p>
+            <p><b>日期：</b>${item.date}</p>
+            <p><b>天气：</b>${item.weather||'无'}</p>
+            <p><b>桩号：</b>${item.station}</p>
+            <p><b>路面病害：</b>${disStr||'无'}</p>
+            <p><b>交安设施：</b>${item.traffic||'无'}</p>
+            <p><b>安全隐患：</b>${item.danger||'无'}</p>
+            <p><b>人员到岗：</b>${item.staff||'无'}</p>
+            <button class="del-btn" data-id="${item.id}">删除本条</button>
+        </div>
+        `
+    })
+    box.innerHTML = html;
+    // 删除事件
+    document.querySelectorAll('.del-btn').forEach(btn=>{
+        btn.onclick = ()=>{
+            const delId = Number(btn.dataset.id);
+            let arr = getLogs().filter(x=>x.id !== delId);
+            saveLogs(arr);
+            renderList();
+        }
+    })
+}
+</script>
+</body>
+</html>
