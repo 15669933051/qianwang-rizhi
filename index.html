@@ -13,7 +13,7 @@
         }
         body{
             background:#f0f2f5;
-            padding-bottom:70px;
+            padding-bottom:80px;
         }
         .header{
             background:#1a73e8;
@@ -125,6 +125,20 @@
             text-align:center;
             line-height:20px;
         }
+        /* 保存按钮 */
+        .save-btn-wrap{
+            padding:12px;
+        }
+        #saveLogBtn{
+            width:100%;
+            padding:14px;
+            background:#1a73e8;
+            color:#fff;
+            border:none;
+            border-radius:8px;
+            font-size:16px;
+            font-weight:bold;
+        }
         /* 底部导航 */
         .tab-bar{
             position:fixed;
@@ -194,6 +208,22 @@
             background:none;
             font-size:14px;
         }
+        .export-btn{
+            margin-top:8px;
+            margin-right:12px;
+            color:#1a73e8;
+            border:none;
+            background:none;
+            font-size:14px;
+        }
+        .print-btn{
+            margin-top:8px;
+            margin-right:12px;
+            color:#2e7d32;
+            border:none;
+            background:none;
+            font-size:14px;
+        }
         .add-row{
             display:flex;
             gap:6px;
@@ -220,6 +250,34 @@
             padding:40px 0;
             font-size:14px;
         }
+        .list-top-bar{
+            display:flex;
+            gap:10px;
+            margin-bottom:12px;
+            flex-wrap:wrap;
+        }
+        .list-top-bar button{
+            flex:1;
+            min-width:110px;
+            padding:10px;
+            border:none;
+            border-radius:6px;
+            background:#1a73e8;
+            color:#fff;
+            font-size:14px;
+        }
+        /*打印专用样式 A4*/
+        @media print{
+            @page{
+                size:A4 portrait;
+                margin:15mm;
+            }
+            body *{visibility:hidden;}
+            #printWrap, #printWrap *{visibility:visible;}
+            #printWrap{position:absolute;left:0;top:0;width:210mm;}
+            .tab-bar,.save-btn-wrap,.list-top-bar,.del-btn,.export-btn,.print-btn{display:none !important;}
+        }
+        #importFileInput{display:none;}
     </style>
 </head>
 <body>
@@ -297,11 +355,12 @@
 
             <div class="form-card">
                 <div class="full-row">
-                    <label>施工内容及完成情况（可拍照）</label>
+                    <label>施工内容及完成情况（可拍照/相册选图）</label>
                     <textarea id="workContent" placeholder="填写今日施工内容、完成工程量、进度情况等..."></textarea>
                     <div class="photo-box">
-                        <input type="file" id="photoInput" accept="image/*" capture="environment" style="display:none">
-                        <button class="photo-btn" onclick="document.getElementById('photoInput').click()">📷 拍照 / 添加照片</button>
+                        <!--去掉capture属性，实现：弹窗二选一：拍照 / 相册选择图片-->
+                        <input type="file" id="photoInput" accept="image/*" style="display:none">
+                        <button class="photo-btn" onclick="document.getElementById('photoInput').click()">📷 拍照 / 从相册选择照片</button>
                         <div class="photo-list" id="photoList"></div>
                     </div>
                 </div>
@@ -329,8 +388,13 @@
             </div>
         </div>
 
-        <!-- 日志列表页面 -->
+        <!-- 日志列表页面（导出、打印在这里） -->
         <div id="page-list" class="page">
+            <div class="list-top-bar">
+                <button onclick="exportAllBackup()">📦全部日志备份(json)</button>
+                <button onclick="document.getElementById('importFileInput').click()">📂导入备份</button>
+                <input type="file" id="importFileInput" accept=".json" style="display:none">
+            </div>
             <div id="listBox"></div>
         </div>
 
@@ -359,11 +423,19 @@
         </div>
     </div>
 
+    <!-- 独立保存按钮 -->
+    <div class="save-btn-wrap">
+        <button id="saveLogBtn">💾保存本条施工日志</button>
+    </div>
+
     <div class="tab-bar">
-        <div class="tab active" data-page="page-form">记日志</div>
+        <div class="tab" data-page="page-form">记日志</div>
         <div class="tab" data-page="page-list">日志列表</div>
         <div class="tab" data-page="page-set">设置</div>
     </div>
+
+    <!--打印临时容器-->
+    <div id="printWrap" style="display:none;"></div>
 
 <script>
 // ========== 项目管理 ==========
@@ -396,7 +468,7 @@ document.getElementById('addProjectBtn').onclick = function(){
     document.getElementById('newProjectInput').value = "";
 }
 
-// ========== 拍照功能 ==========
+// ========== 拍照&相册选择功能 ==========
 let photos = []; // 存base64图片
 document.getElementById('photoInput').onchange = function(e){
     const file = e.target.files[0];
@@ -419,7 +491,7 @@ document.getElementById('photoInput').onchange = function(e){
         img.src = ev.target.result;
     }
     reader.readAsDataURL(file);
-    e.target.value = ""; // 允许重复选同一张
+    e.target.value = "";
 }
 function renderPhotos(){
     const box = document.getElementById('photoList');
@@ -449,7 +521,6 @@ function loadDefaultInfo(){
     if(info.contractor) document.getElementById('setContractor').value = info.contractor;
     if(info.supervisor) document.getElementById('setSupervisor').value = info.supervisor;
     if(info.contractNo) document.getElementById('setContractNo').value = info.contractNo;
-    // 回填到表单
     if(info.contractor) document.getElementById('contractor').value = info.contractor;
     if(info.supervisor) document.getElementById('supervisor').value = info.supervisor;
     if(info.contractNo) document.getElementById('contractNo').value = info.contractNo;
@@ -461,7 +532,6 @@ function saveDefaultInfo(){
         contractNo: document.getElementById('setContractNo').value
     };
     localStorage.setItem('roadDefaultInfo', JSON.stringify(info));
-    // 回填表单
     document.getElementById('contractor').value = info.contractor;
     document.getElementById('supervisor').value = info.supervisor;
     document.getElementById('contractNo').value = info.contractNo;
@@ -491,14 +561,10 @@ function saveLogs(arr){
     localStorage.setItem('roadLog', JSON.stringify(arr));
 }
 
-// 保存日志（点击记日志标签）
-document.querySelector('[data-page="page-form"]').addEventListener('click',()=>{
-    if(!document.getElementById('page-form').classList.contains('active')) return;
-    
+// =====【独立保存按钮】=====
+document.getElementById('saveLogBtn').onclick = function(){
     const workDate = document.getElementById('workDate').value;
-    const station = document.getElementById('station').value;
     const workContent = document.getElementById('workContent').value;
-    
     if(!workDate){ alert('施工日期不能为空！'); return; }
     if(!workContent.trim() && photos.length === 0){ alert('施工内容或照片至少填写一项！'); return; }
 
@@ -508,7 +574,7 @@ document.querySelector('[data-page="page-form"]').addEventListener('click',()=>{
         unitProject: document.getElementById('unitProject').value,
         subProject: document.getElementById('subProject').value,
         itemProject: document.getElementById('itemProject').value,
-        station: station,
+        station: document.getElementById('station').value,
         contractNo: document.getElementById('contractNo').value,
         logNo: document.getElementById('logNo').value,
         workDate: workDate,
@@ -518,20 +584,17 @@ document.querySelector('[data-page="page-form"]').addEventListener('click',()=>{
         contractor: document.getElementById('contractor').value,
         supervisor: document.getElementById('supervisor').value,
         workContent: workContent,
-        photos: photos,
+        photos: [...photos],
         resource: document.getElementById('resource').value,
         quality: document.getElementById('quality').value,
         safety: document.getElementById('safety').value
     };
-    
     const logs = getLogs();
     logs.unshift(log);
     saveLogs(logs);
-    alert('日志保存成功！');
-    
-    // 清空施工内容相关，保留日期和默认信息
-    photos = [];
-    renderPhotos();
+    alert('✅日志保存成功！');
+    //清空表单，保留日期和默认单位信息
+    photos = []; renderPhotos();
     document.getElementById('workContent').value = '';
     document.getElementById('resource').value = '';
     document.getElementById('quality').value = '';
@@ -539,7 +602,132 @@ document.querySelector('[data-page="page-form"]').addEventListener('click',()=>{
     document.getElementById('weather').value = '';
     document.getElementById('tempHigh').value = '';
     document.getElementById('tempLow').value = '';
-})
+}
+
+// ========== 单条A4浏览器打印功能（可选同WiFi无线打印机）==========
+function printItem(logItem){
+    let imgHtml = "";
+    if(logItem.photos && logItem.photos.length>0){
+        logItem.photos.forEach(p=>{
+            imgHtml += `<p><img src="${p}" style="max-width:100%;"></p>`;
+        })
+    }
+    const printHtml = `
+<h2 align="center">临安区“四好农村路”2026年提升工程——施工日志</h2>
+<table width="100%" border="1" cellpadding="6" cellspacing="0">
+<tr><td>承包单位</td><td>${logItem.contractor||""}</td><td>监理单位</td><td>${logItem.supervisor||""}</td></tr>
+<tr><td>合同号</td><td>${logItem.contractNo||""}</td><td>编号</td><td>${logItem.logNo||""}</td></tr>
+<tr><td>单位工程</td><td>${logItem.unitProject||""}</td><td>分项工程</td><td>${logItem.itemProject||""}</td></tr>
+<tr><td>分部工程</td><td>${logItem.subProject||""}</td><td>桩号部位</td><td>${logItem.station||""}</td></tr>
+<tr><td>施工日期</td><td>${logItem.workDate||""}</td><td>天气</td><td>${logItem.weather||""}</td></tr>
+<tr><td>气温</td><td colspan="3">最高${logItem.tempHigh||""}℃ 最低${logItem.tempLow||""}℃</td></tr>
+</table>
+<h4>施工内容及完成情况</h4>
+<p>${logItem.workContent||""}</p>
+${imgHtml}
+<h4>资源投入情况</h4>
+<p>${logItem.resource||""}</p>
+<h4>质量检查情况</h4>
+<p>${logItem.quality||""}</p>
+<h4>现场安全情况</h4>
+<p>${logItem.safety||""}</p>
+`;
+    document.getElementById('printWrap').innerHTML = printHtml;
+    window.print();
+    document.getElementById('printWrap').innerHTML = "";
+}
+
+// ========== 导出单条word(A4设置) ==========
+function exportItemWord(logItem){
+    let imgHtml = "";
+    if(logItem.photos && logItem.photos.length>0){
+        logItem.photos.forEach(p=>{
+            imgHtml += `<p><img src="${p}" style="max-width:600px;"></p>`;
+        })
+    }
+    const html = `
+<html xmlns:o="urn:schemas-microsoft-com:office:office">
+<head>
+<meta charset="utf‑8">
+<title>施工日志-${logItem.workDate}</title>
+<style>
+@page {size:A4; margin:2cm;}
+table{border-collapse:collapse;}
+td{border:1px solid #333;padding:6px;}
+</style>
+</head>
+<body>
+<h2 align="center">临安区“四好农村路”2026年提升工程——施工日志</h2>
+<table width="100%">
+<tr><td>承包单位</td><td>${logItem.contractor||""}</td><td>监理单位</td><td>${logItem.supervisor||""}</td></tr>
+<tr><td>合同号</td><td>${logItem.contractNo||""}</td><td>编号</td><td>${logItem.logNo||""}</td></tr>
+<tr><td>单位工程</td><td>${logItem.unitProject||""}</td><td>分项工程</td><td>${logItem.itemProject||""}</td></tr>
+<tr><td>分部工程</td><td>${logItem.subProject||""}</td><td>桩号部位</td><td>${logItem.station||""}</td></tr>
+<tr><td>施工日期</td><td>${logItem.workDate||""}</td><td>天气</td><td>${logItem.weather||""}</td></tr>
+<tr><td>气温</td><td colspan="3">最高${logItem.tempHigh||""}℃ 最低${logItem.tempLow||""}℃</td></tr>
+</table>
+<h4>施工内容及完成情况</h4>
+<p>${logItem.workContent||""}</p>
+${imgHtml}
+<h4>资源投入情况</h4>
+<p>${logItem.resource||""}</p>
+<h4>质量检查情况</h4>
+<p>${logItem.quality||""}</p>
+<h4>现场安全情况</h4>
+<p>${logItem.safety||""}</p>
+</body></html>
+`;
+    const blob = new Blob([html],{type:'application/msword;charset=utf-8'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `施工日志_${logItem.workDate}.doc`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+}
+
+//全部日志备份json
+function exportAllBackup(){
+    const allData = {
+        projectList:getProjectList(),
+        defaultInfo:JSON.parse(localStorage.getItem('roadDefaultInfo')||'{}'),
+        logs:getLogs()
+    };
+    const blob = new Blob([JSON.stringify(allData,null,2)],{type:"application/json"});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `施工日志全部备份_${new Date().toLocaleDateString()}.json`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+    alert("全部备份已下载！妥善保存，清除浏览器缓存后可以恢复数据");
+}
+
+//导入备份
+document.getElementById('importFileInput').onchange=function(e){
+    const f = e.target.files[0];
+    if(!f) return;
+    const reader=new FileReader();
+    reader.onload=function(ev){
+        try{
+            const data=JSON.parse(ev.target.result);
+            if(data.projectList) saveProjectList(data.projectList);
+            if(data.defaultInfo) localStorage.setItem('roadDefaultInfo',JSON.stringify(data.defaultInfo));
+            if(data.logs) saveLogs(data.logs);
+            renderProjectSelect();
+            loadDefaultInfo();
+            alert("✅导入备份成功！");
+        }catch(err){
+            alert("文件格式错误，不是备份json");
+        }
+    }
+    reader.readAsText(f);
+    e.target.value="";
+}
 
 // ========== 日志列表渲染 ==========
 function renderList(){
@@ -564,11 +752,29 @@ function renderList(){
             <p><b>资源投入：</b>${item.resource || '-'}</p>
             <p><b>质量检查：</b>${item.quality || '-'}</p>
             <p><b>安全情况：</b>${item.safety || '-'}</p>
+            <button class="print-btn" data-id="${item.id}">🖨打印A4</button>
+            <button class="export-btn" data-id="${item.id}">📄导出本条Word</button>
             <button class="del-btn" data-id="${item.id}">删除本条</button>
         </div>
         `
     })
     box.innerHTML = html;
+    //打印按钮
+    document.querySelectorAll('.print-btn').forEach(btn=>{
+        btn.onclick = ()=>{
+            const id = Number(btn.dataset.id);
+            const oneLog = getLogs().find(x=>x.id===id);
+            if(oneLog) printItem(oneLog);
+        }
+    })
+    //导出按钮事件
+    document.querySelectorAll('.export-btn').forEach(btn=>{
+        btn.onclick = ()=>{
+            const id = Number(btn.dataset.id);
+            const oneLog = getLogs().find(x=>x.id===id);
+            if(oneLog) exportItemWord(oneLog);
+        }
+    })
     document.querySelectorAll('.del-btn').forEach(btn=>{
         btn.onclick = ()=>{
             if(!confirm('确定删除这条日志吗？')) return;
@@ -610,6 +816,9 @@ function renderProjectManage(){
 // 初始化
 renderProjectSelect();
 loadDefaultInfo();
+//默认打开记日志tab
+document.querySelector('[data-page="page-form"]').classList.add('active');
+document.querySelector('.tab[data-page="page-form"]').classList.add('active');
 </script>
 </body>
 </html>
