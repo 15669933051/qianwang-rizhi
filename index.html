@@ -4,9 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>施工日志</title>
-    <script src="https://cdn.jsdelivr.net/npm/pizzip@3.1.4/dist/pizzip.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/docxtemplater@3.37.12/build/docxtemplater.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/docxtemplater-image-module-free@1.1.1/dist/image-module.js"></script>
+    <!-- 替换为国内可访问镜像CDN -->
+    <script src="https://cdn.jsdmirror.com/npm/pizzip@3.1.4/dist/pizzip.min.js"></script>
+    <script src="https://cdn.jsdmirror.com/npm/docxtemplater@3.37.12/build/docxtemplater.js"></script>
+    <script src="https://cdn.jsdmirror.com/npm/docxtemplater-image-module-free@1.1.1/dist/image-module.js"></script>
     <style>
         *{box-sizing:border-box;margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","SimSun",sans-serif;}
         body{background:#f0f2f5;padding-bottom:80px;}
@@ -128,6 +129,12 @@
     </div>
 
 <script>
+// 空值兼容函数，修复undefined显示
+function safeStr(v){
+    if(v === undefined || v === null) return "-";
+    return String(v).trim() === "" ? "-" : v;
+}
+
 function updateHeaderTitle(name){document.getElementById('headerTitle').innerText=name+' 施工日志';}
 function getProjectList(){
     const raw=localStorage.getItem('roadProjectList');
@@ -156,22 +163,22 @@ function bindProjectChange(){const sel=document.getElementById('project');sel.on
 function fillByProject(name){
     const p=findProject(name);
     if(p){
-        document.getElementById('projectAddr').value=p.projectAddr;
-        document.getElementById('buildUnit').value=p.buildUnit;
-        document.getElementById('contractor').value=p.contractor;
-        document.getElementById('supervisor').value=p.supervisor;
-        document.getElementById('designUnit').value=p.designUnit;
+        document.getElementById('projectAddr').value=safeStr(p.projectAddr);
+        document.getElementById('buildUnit').value=safeStr(p.buildUnit);
+        document.getElementById('contractor').value=safeStr(p.contractor);
+        document.getElementById('supervisor').value=safeStr(p.supervisor);
+        document.getElementById('designUnit').value=safeStr(p.designUnit);
     }
 }
 function bindSetProjectChange(){const sel=document.getElementById('setProjectSel');sel.onchange=function(){fillSetFormByProject(this.value);};}
 function fillSetFormByProject(name){
     const p=findProject(name);
     if(p){
-        document.getElementById('setProjectAddr').value=p.projectAddr;
-        document.getElementById('setBuildUnit').value=p.buildUnit;
-        document.getElementById('setContractor').value=p.contractor;
-        document.getElementById('setSupervisor').value=p.supervisor;
-        document.getElementById('setDesignUnit').value=p.designUnit;
+        document.getElementById('setProjectAddr').value=safeStr(p.projectAddr);
+        document.getElementById('setBuildUnit').value=safeStr(p.buildUnit);
+        document.getElementById('setContractor').value=safeStr(p.contractor);
+        document.getElementById('setSupervisor').value=safeStr(p.supervisor);
+        document.getElementById('setDesignUnit').value=safeStr(p.designUnit);
     }
 }
 function saveProjectInfo(){
@@ -303,11 +310,9 @@ async function exportRealDocx(logItem){
         weekday='星期'+wd[dd.getDay()];
     }catch(e){}
 
-    // 生产记录合并今日+明日
     const prod = (logItem.workToday||'').trim();
-    const plan = ''; // 模板无明日计划独立栏，可并入生产记录
 
-    // docx模板XML（严格按上传模板排版）
+    // docx模板XML
     const templateContent = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <pkg:package xmlns:pkg="http://schemas.openxmlformats.org/package/2006">
 <pkg:types xmlns:pkg="http://schemas.openxmlformats.org/package/2006">
@@ -430,23 +435,23 @@ async function exportRealDocx(logItem){
         nullGetter:function(){return '';}
     });
     doc.render({
-        project:logItem.project||'',
-        projectAddr:logItem.projectAddr||'',
-        buildUnit:logItem.buildUnit||'',
-        supervisor:logItem.supervisor||'',
-        contractor:logItem.contractor||'',
-        designUnit:logItem.designUnit||'',
-        workDate:logItem.workDate||'',
+        project:safeStr(logItem.project),
+        projectAddr:safeStr(logItem.projectAddr),
+        buildUnit:safeStr(logItem.buildUnit),
+        supervisor:safeStr(logItem.supervisor),
+        contractor:safeStr(logItem.contractor),
+        designUnit:safeStr(logItem.designUnit),
+        workDate:safeStr(logItem.workDate),
         weekday:weekday,
-        weather:logItem.weather||'',
-        wind:logItem.wind||'',
-        tempInfo:logItem.tempInfo||'',
-        remark:logItem.remark||'',
-        workToday:logItem.workToday||'',
-        qualitySafe:logItem.qualitySafe||'',
-        materialRecord:logItem.materialRecord||'',
-        personCharge:logItem.personCharge||'',
-        recorder:logItem.recorder||'',
+        weather:safeStr(logItem.weather),
+        wind:safeStr(logItem.wind),
+        tempInfo:safeStr(logItem.tempInfo),
+        remark:safeStr(logItem.remark),
+        workToday:safeStr(logItem.workToday),
+        qualitySafe:safeStr(logItem.qualitySafe),
+        materialRecord:safeStr(logItem.materialRecord),
+        personCharge:safeStr(logItem.personCharge),
+        recorder:safeStr(logItem.recorder),
         rows:rows
     });
     const out=doc.getZip().generate({type:'blob',mimeType:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'});
@@ -487,16 +492,16 @@ function renderList(){
     logs.forEach(item=>{
         html+=`
         <div class="log-card">
-            <h4>${item.workDate} 施工日志｜${item.project}</h4>
-            <p><b>项目地址：</b>${item.projectAddr||'-'}</p>
-            <p><b>建设单位：</b>${item.buildUnit||'-'}</p>
-            <p><b>施工单位：</b>${item.contractor||'-'}</p>
-            <p><b>天气：</b>${item.weather||'-'}　风力：${item.wind||'-'}　温度：${item.tempInfo||'-'}</p>
-            <p><b>【生产记录】</b>${item.workToday||'-'}</p>
-            <p><b>【技术质量安全】</b>${item.qualitySafe||'-'}</p>
-            <p><b>【材料进场】</b>${item.materialRecord||'-'}</p>
+            <h4>${safeStr(item.workDate)} 施工日志｜${safeStr(item.project)}</h4>
+            <p><b>项目地址：</b>${safeStr(item.projectAddr)}</p>
+            <p><b>建设单位：</b>${safeStr(item.buildUnit)}</p>
+            <p><b>施工单位：</b>${safeStr(item.contractor)}</p>
+            <p><b>天气：</b>${safeStr(item.weather)}　风力：${safeStr(item.wind)}　温度：${safeStr(item.tempInfo)}</p>
+            <p><b>【生产记录】</b>${safeStr(item.workToday)}</p>
+            <p><b>【技术质量安全】</b>${safeStr(item.qualitySafe)}</p>
+            <p><b>【材料进场】</b>${safeStr(item.materialRecord)}</p>
             ${item.photos&&item.photos.length>0?`<div class="log-photos">${item.photos.map(p=>`<img src="${p}">`).join('')}</div>`:''}
-            <p><b>负责人：</b>${item.personCharge||'-'}　记录人：${item.recorder||'-'}</p>
+            <p><b>负责人：</b>${safeStr(item.personCharge)}　记录人：${safeStr(item.recorder)}</p>
             <button class="docx-btn" data-id="${item.id}">📄导出Word(docx)</button>
             <button class="del-btn" data-id="${item.id}">删除本条</button>
         </div>`;
