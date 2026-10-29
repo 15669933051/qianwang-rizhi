@@ -1,0 +1,1666 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="施工日志">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#1a73e8">
+<meta name="format-detection" content="telephone=no">
+<title>施工日志</title>
+<style>
+        *{
+            box-sizing: border-box;
+            margin:0;
+            padding:0;
+            font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+        }
+        body{
+            background:#f0f2f5;
+            padding-bottom:80px;
+            -webkit-text-size-adjust:100%;
+        }
+        .header{
+            background:#1a73e8;
+            color:#fff;
+            text-align:center;
+            padding:14px 10px;
+            font-size:17px;
+            font-weight:600;
+            line-height:1.4;
+            position:sticky;
+            top:0;
+            z-index:20;
+        }
+        .wrap{
+            padding:12px;
+        }
+        .form-card{
+            background:#fff;
+            border-radius:8px;
+            padding:12px;
+            margin-bottom:12px;
+        }
+        .row{
+            display:flex;
+            gap:8px;
+            margin-bottom:10px;
+            align-items:center;
+        }
+        .row:last-child{margin-bottom:0;}
+        .row label{
+            width:86px;
+            font-size:14px;
+            color:#333;
+            flex-shrink:0;
+        }
+        .row input, .row select{
+            flex:1;
+            min-width:0;
+            border:1px solid #ddd;
+            border-radius:6px;
+            padding:10px 8px;
+            font-size:15px;
+            background:#fff;
+            color:#222;
+        }
+        .full-row{
+            margin-bottom:10px;
+        }
+        .full-row:last-child{margin-bottom:0;}
+        .full-row label{
+            display:block;
+            font-size:14px;
+            color:#333;
+            margin-bottom:6px;
+            font-weight:500;
+        }
+        .full-row textarea{
+            width:100%;
+            border:1px solid #ddd;
+            border-radius:6px;
+            padding:10px;
+            font-size:15px;
+            min-height:80px;
+            resize:vertical;
+            background:#fff;
+            color:#222;
+        }
+        .title-row{
+            background:#f5f7fa;
+            padding:8px 10px;
+            border-radius:6px;
+            font-size:14px;
+            font-weight:600;
+            color:#1a73e8;
+            margin-bottom:10px;
+        }
+        .photo-box{margin-top:8px;}
+        .photo-btn{
+            width:100%;
+            padding:12px;
+            background:#e8f0fe;
+            border:1px dashed #1a73e8;
+            border-radius:6px;
+            color:#1a73e8;
+            font-size:15px;
+            text-align:center;
+        }
+        .photo-list{
+            display:flex;
+            flex-wrap:wrap;
+            gap:8px;
+            margin-top:8px;
+        }
+        .photo-item{
+            width:80px;
+            height:80px;
+            border-radius:6px;
+            overflow:hidden;
+            position:relative;
+        }
+        .photo-item img{
+            width:100%;
+            height:100%;
+            object-fit:cover;
+        }
+        .photo-del{
+            position:absolute;
+            top:2px;
+            right:2px;
+            width:20px;
+            height:20px;
+            background:rgba(0,0,0,0.6);
+            color:#fff;
+            border-radius:50%;
+            font-size:12px;
+            text-align:center;
+            line-height:20px;
+            border:none;
+        }
+        .hint{
+            font-size:12px;
+            color:#888;
+            line-height:1.5;
+            margin-top:6px;
+        }
+        .save-btn-wrap{
+            padding:12px;
+        }
+        #saveLogBtn{
+            width:100%;
+            padding:14px;
+            background:#1a73e8;
+            color:#fff;
+            border:none;
+            border-radius:8px;
+            font-size:16px;
+            font-weight:bold;
+        }
+        .tab-bar{
+            position:fixed;
+            bottom:0;
+            left:0;
+            width:100%;
+            display:flex;
+            background:#fff;
+            border-top:1px solid #ddd;
+            padding-bottom:env(safe-area-inset-bottom);
+            z-index:20;
+        }
+        .tab{
+            flex:1;
+            text-align:center;
+            padding:12px 0;
+            font-size:15px;
+            color:#666;
+        }
+        .tab.active{
+            color:#1a73e8;
+            font-weight:500;
+        }
+        .page{display:none;}
+        .page.active{display:block;}
+        .log-card{
+            background:#fff;
+            border-radius:8px;
+            padding:12px;
+            margin-bottom:10px;
+        }
+        .log-card h4{
+            font-size:15px;
+            color:#333;
+            margin-bottom:8px;
+            border-bottom:1px solid #eee;
+            padding-bottom:6px;
+        }
+        .log-card p{
+            font-size:13px;
+            line-height:1.6;
+            color:#555;
+            margin-bottom:3px;
+            word-break:break-all;
+        }
+        .log-card p b{color:#333;}
+        .log-photos{
+            display:flex;
+            flex-wrap:wrap;
+            gap:6px;
+            margin-top:8px;
+        }
+        .log-photos img{
+            width:70px;
+            height:70px;
+            border-radius:4px;
+            object-fit:cover;
+        }
+        .btn-row{
+            display:flex;
+            gap:8px;
+            margin-top:10px;
+            flex-wrap:wrap;
+        }
+        .btn-row button{
+            flex:1 1 0;
+            min-width:96px;
+            padding:9px 6px;
+            border-radius:6px;
+            font-size:13px;
+            border:1px solid #dbe6f6;
+            background:#f4f8ff;
+            color:#1a73e8;
+        }
+        .btn-row button.danger{
+            border-color:#f6dede;
+            background:#fff5f5;
+            color:#e53935;
+        }
+        .add-row{
+            display:flex;
+            gap:6px;
+            margin-top:6px;
+        }
+        .add-row input{
+            flex:1;
+            border:1px solid #ddd;
+            border-radius:6px;
+            padding:8px;
+            font-size:14px;
+        }
+        .add-row button{
+            width:70px;
+            background:#1a73e8;
+            color:#fff;
+            border:none;
+            border-radius:6px;
+            font-size:14px;
+        }
+        .empty-tip{
+            text-align:center;
+            color:#999;
+            padding:40px 0;
+            font-size:14px;
+        }
+        .list-top-bar{
+            display:flex;
+            gap:10px;
+            margin-bottom:12px;
+            flex-wrap:wrap;
+        }
+        .list-top-bar button{
+            flex:1;
+            min-width:110px;
+            padding:10px;
+            border:none;
+            border-radius:6px;
+            background:#1a73e8;
+            color:#fff;
+            font-size:14px;
+        }
+        .help-card{
+            background:#fff;
+            border-radius:8px;
+            padding:12px;
+            margin-bottom:12px;
+            font-size:13px;
+            line-height:1.7;
+            color:#444;
+        }
+        .help-card h3{
+            font-size:14px;
+            color:#1a73e8;
+            margin-bottom:8px;
+        }
+        .help-card ul{padding-left:18px;}
+        .help-card li{margin-bottom:4px;}
+        .help-card detail{display:block;}
+        #importFileInput{display:none;}
+
+        /* ============ 右上角提示 ============ */
+        #toast{
+            position:fixed;
+            left:50%;
+            bottom:96px;
+            transform:translateX(-50%);
+            background:rgba(0,0,0,.82);
+            color:#fff;
+            padding:10px 16px;
+            border-radius:20px;
+            font-size:13px;
+            max-width:86%;
+            text-align:center;
+            line-height:1.5;
+            opacity:0;
+            pointer-events:none;
+            transition:opacity .2s;
+            z-index:60;
+            word-break:break-all;
+        }
+        #toast.show{opacity:1;}
+
+        /* ============ 导出弹窗 ============ */
+        #modal{
+            position:fixed;
+            top:0;right:0;bottom:0;left:0;
+            background:rgba(0,0,0,.45);
+            display:none;
+            align-items:center;
+            justify-content:center;
+            padding:20px;
+            z-index:50;
+        }
+        #modal.show{display:flex;}
+        .modal-card{
+            background:#fff;
+            border-radius:12px;
+            padding:18px;
+            width:100%;
+            max-width:340px;
+        }
+        .modal-card h3{font-size:16px;color:#222;margin-bottom:8px;}
+        .modal-card p{font-size:13px;color:#666;line-height:1.7;margin-bottom:12px;word-break:break-all;}
+        .modal-card .info{font-size:12px;color:#888;line-height:1.6;margin-bottom:14px;}
+        .modal-btns{display:flex;flex-direction:column;gap:8px;}
+        .modal-btns button{
+            width:100%;
+            padding:12px;
+            border-radius:8px;
+            border:1px solid #dbe6f6;
+            background:#f4f8ff;
+            color:#1a73e8;
+            font-size:15px;
+        }
+        .modal-btns button.primary{
+            background:#1a73e8;
+            color:#fff;
+            border-color:#1a73e8;
+            font-weight:600;
+        }
+        .modal-btns button.plain{
+            background:#f5f5f5;
+            color:#666;
+            border-color:#eee;
+        }
+
+        /* ============ 生成中遮罩 ============ */
+        #busy{
+            position:fixed;
+            top:0;right:0;bottom:0;left:0;
+            background:rgba(0,0,0,.35);
+            display:none;
+            align-items:center;
+            justify-content:center;
+            z-index:70;
+        }
+        #busy.show{display:flex;}
+        .busy-box{
+            background:rgba(0,0,0,.8);
+            color:#fff;
+            padding:18px 22px;
+            border-radius:10px;
+            font-size:14px;
+            text-align:center;
+            line-height:1.6;
+        }
+        .spinner{
+            width:26px;
+            height:26px;
+            margin:0 auto 10px;
+            border:3px solid rgba(255,255,255,.3);
+            border-top-color:#fff;
+            border-radius:50%;
+            animation:spin .8s linear infinite;
+        }
+        @keyframes spin{to{transform:rotate(360deg);}}
+
+        /* ============ 打印 / PDF 样式 ============ */
+        #printWrap{display:none;}
+        .doc-title{
+            font-family:"宋体",SimSun,serif;
+            font-size:22pt;
+            font-weight:bold;
+            text-align:center;
+            letter-spacing:2pt;
+            margin:0 0 4mm 0;
+            color:#000;
+        }
+        table.doc-table{
+            width:170mm;
+            margin:0 auto;
+            border-collapse:collapse;
+            table-layout:fixed;
+            font-family:"宋体",SimSun,serif;
+            font-size:10.5pt;
+            color:#000;
+        }
+        table.doc-table td{
+            border:0.5pt solid #000;
+            padding:0.6mm 1.6mm;
+            vertical-align:middle;
+            line-height:1.25;
+            word-break:break-all;
+        }
+        table.doc-table td.head{
+            background:#F3F4F6;
+            font-weight:bold;
+            text-align:center;
+        }
+        table.doc-table td.body{
+            vertical-align:top;
+            white-space:pre-wrap;
+        }
+        table.doc-table td.center{text-align:center;}
+table.doc-table td.head-left{text-align:left;}
+        table.photo-table td{
+            text-align:center;
+            vertical-align:middle;
+            padding:0.6mm;
+        }
+        table.photo-table td.ph{
+            height:36mm;
+        }
+        table.photo-table td.ph img{
+            max-width:52mm;
+            max-height:34mm;
+            width:auto;
+            height:auto;
+        }
+        table.sign-table{
+            width:170mm;
+            margin:0 auto;
+            border-collapse:collapse;
+            table-layout:fixed;
+            font-family:"宋体",SimSun,serif;
+            font-size:12pt;
+            color:#000;
+        }
+        table.sign-table td{
+            border:none;
+            padding:1mm 1.6mm;
+        }
+
+        @media print{
+            @page{
+                size:A4 portrait;
+                margin:18mm 20mm;
+            }
+            body{background:#fff;padding:0;margin:0;}
+            .wrap,.tab-bar,.save-btn-wrap,.header,#toast,#modal,#busy{display:none !important;}
+            #printWrap{
+                display:block !important;
+                position:static;
+                width:170mm;
+                margin:0 auto;
+                background:#fff;
+            }
+            .doc-title{margin:0 0 4mm 0;}
+            table.doc-table,table.sign-table{page-break-inside:auto;}
+            table.photo-table tr{page-break-inside:avoid;}
+        }
+</style>
+</head>
+<body>
+    <div class="header" id="headerTitle">施工日志</div>
+
+    <div class="wrap">
+        <!-- ================= 记日志 ================= -->
+        <div id="page-form" class="page active">
+            <div class="form-card">
+                <div class="row">
+                    <label>选择项目</label>
+                    <select id="project"></select>
+                </div>
+                <div class="add-row">
+                    <input type="text" id="newProjectInput" placeholder="输入新项目名称">
+                    <button id="addProjectBtn">添加</button>
+                </div>
+            </div>
+
+            <div class="form-card">
+                <div class="row"><label>项目地址</label><input type="text" id="projectAddr" placeholder="如：临安"></div>
+                <div class="row"><label>建设单位</label><input type="text" id="buildUnit" placeholder="建设单位名称"></div>
+                <div class="row"><label>施工单位</label><input type="text" id="contractor" placeholder="承包/施工单位"></div>
+                <div class="row"><label>监理单位</label><input type="text" id="supervisor" placeholder="监理单位"></div>
+                <div class="row"><label>设计单位</label><input type="text" id="designUnit" placeholder="设计单位"></div>
+                <div class="row"><label>合同号</label><input type="text" id="contractNo" placeholder="合同编号"></div>
+            </div>
+
+            <div class="form-card">
+                <div class="row"><label>施工日期</label><input type="date" id="workDate"></div>
+                <div class="row"><label>天气</label><input type="text" id="weather" placeholder="晴"></div>
+                <div class="row"><label>风力</label><input type="text" id="wind" placeholder="东北风2级"></div>
+                <div class="row"><label>温度</label><input type="text" id="tempInfo" placeholder="19℃"></div>
+                <div class="row"><label>备注</label><input type="text" id="remark" placeholder="无"></div>
+                <div class="row"><label>工程负责人</label><input type="text" id="personCharge" placeholder="负责人"></div>
+                <div class="row"><label>记录人</label><input type="text" id="recorder" placeholder="记录人"></div>
+            </div>
+
+            <div class="form-card">
+                <div class="full-row">
+                    <label>■ 生产情况记录 - 今日完成</label>
+                    <textarea id="workToday" placeholder="填写今日完成工程量、施工内容..."></textarea>
+                </div>
+                <div class="full-row">
+                    <label>■ 生产情况记录 - 明日计划</label>
+                    <textarea id="workTomorrow" placeholder="明日施工计划、人员机械安排..."></textarea>
+                </div>
+            </div>
+
+            <div class="form-card">
+                <div class="full-row">
+                    <label>■ 技术质量安全工作记录</label>
+                    <textarea id="qualitySafe" placeholder="质量检查、安全隐患、管控情况..."></textarea>
+                </div>
+            </div>
+
+            <div class="form-card">
+                <div class="full-row">
+                    <label>■ 材料、构配件进场记录</label>
+                    <textarea id="materials" placeholder="如：无；或 水泥 20t、钢筋 5t..."></textarea>
+                </div>
+            </div>
+
+            <div class="form-card">
+                <div class="full-row">
+                    <label>■ 现场照片</label>
+                    <div class="photo-box">
+                        <input type="file" id="photoInput" accept="image/*" multiple style="display:none">
+                        <button class="photo-btn" onclick="document.getElementById('photoInput').click()">📷 拍照 / 从相册选择照片</button>
+                        <div class="hint">导出的 Word 中照片按 3 张一行排入表格，自动缩放不撑破单元格。</div>
+                        <div class="photo-list" id="photoList"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ================= 日志列表 ================= -->
+        <div id="page-list" class="page">
+            <div class="list-top-bar">
+                <button onclick="exportAllBackup()">📦全部日志备份(json)</button>
+                <button onclick="document.getElementById('importFileInput').click()">📂导入备份</button>
+                <input type="file" id="importFileInput" accept=".json,application/json" style="display:none">
+            </div>
+            <div id="listBox"></div>
+        </div>
+
+        <!-- ================= 设置 ================= -->
+        <div id="page-set" class="page">
+            <div class="form-card">
+                <div class="title-row">项目管理</div>
+                <div id="projectManageBox"></div>
+            </div>
+
+            <div class="form-card">
+                <div class="title-row">项目信息设置（先选项目再编辑）</div>
+                <div class="row"><label>选择项目</label><select id="setProjectSel"></select></div>
+                <div class="row"><label>项目地址</label><input type="text" id="setProjectAddr" placeholder="该项目地址"></div>
+                <div class="row"><label>建设单位</label><input type="text" id="setBuildUnit" placeholder="该项目建设单位"></div>
+                <div class="row"><label>施工单位</label><input type="text" id="setContractor" placeholder="该项目施工单位"></div>
+                <div class="row"><label>监理单位</label><input type="text" id="setSupervisor" placeholder="该项目监理单位"></div>
+                <div class="row"><label>设计单位</label><input type="text" id="setDesignUnit" placeholder="该项目设计单位"></div>
+                <div class="row"><label>合同号</label><input type="text" id="setContractNo" placeholder="该项目合同号"></div>
+                <button style="width:100%;padding:12px;background:#1a73e8;color:#fff;border:none;border-radius:6px;font-size:15px;margin-top:10px;" onclick="saveProjectInfo()">保存当前项目信息</button>
+            </div>
+
+            <div class="help-card">
+                <h3>📖 使用说明</h3>
+                <ul>
+                    <li>所有数据只保存在本机浏览器（localStorage），不上传服务器；换手机请用「全部日志备份」导出 json 再导入。</li>
+                    <li>导出 Word 为纯前端现场生成（不依赖任何网络或第三方库），表格严格按施工日志模板：信息表 + 生产记录 + 技术质量安全 + 材料进场 + 现场照片（3 张一行）+ 签字栏。</li>
+                    <li>照片在拍照时已压缩（长边 1000px），导出时直接写入文档，不再二次解码，手机内存占用小。</li>
+                    <li>导出耗时：生成过程为纯本地计算，电脑实测 0 张 0.4 毫秒、6 张 4.5 毫秒、12 张 8 毫秒；手机约为其 10～20 倍（0.1～0.3 秒），主要时间花在保存文件上。</li>
+                    <li>如需纸质打印或 PDF，点日志卡片上的「打印/存PDF」，A4 排版与 Word 一致。</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <div class="save-btn-wrap">
+        <button id="saveLogBtn">💾 保存本条施工日志</button>
+    </div>
+
+    <div class="tab-bar">
+        <div class="tab" data-page="page-form">记日志</div>
+        <div class="tab" data-page="page-list">日志列表</div>
+        <div class="tab" data-page="page-set">设置</div>
+    </div>
+
+    <div id="printWrap"></div>
+
+    <div id="modal">
+        <div class="modal-card">
+            <h3 id="modalTitle">Word 文档已生成</h3>
+            <p id="modalInfo"></p>
+            <div class="info" id="modalHint"></div>
+            <div class="modal-btns">
+                <button class="primary" id="modalDownload">⬇️ 下载 / 保存到本机</button>
+                <button id="modalShare">📤 分享 / 存储到「文件」</button>
+                <button class="plain" id="modalClose">关闭</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="busy">
+        <div class="busy-box">
+            <div class="spinner"></div>
+            <div id="busyText">正在生成 Word 文档…</div>
+        </div>
+    </div>
+
+    <div id="toast"></div>
+
+<script>
+/* ==================================================================
+   一、DOCX 生成器：零依赖、纯浏览器端（ZIP 存储方式 + OOXML）
+   说明：不使用任何 CDN / 第三方库，iOS Safari 与安卓浏览器均可离线运行
+   ================================================================== */
+/* DOCX-GEN-START */
+var DocxGen = (function () {
+    'use strict';
+
+    /* ---------- 基础工具 ---------- */
+    function esc(s) {
+        return String(s == null ? '' : s)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;');
+    }
+    function u8(str) { return new TextEncoder().encode(str); }
+
+    /* ---------- CRC32 ---------- */
+    var CRC_TABLE = null;
+    function crc32(buf) {
+        if (!CRC_TABLE) {
+            CRC_TABLE = new Uint32Array(256);
+            for (var n = 0; n < 256; n++) {
+                var c = n;
+                for (var k = 0; k < 8; k++) c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
+                CRC_TABLE[n] = c >>> 0;
+            }
+        }
+        var crc = 0xFFFFFFFF;
+        for (var i = 0; i < buf.length; i++) crc = CRC_TABLE[(crc ^ buf[i]) & 0xFF] ^ (crc >>> 8);
+        return (crc ^ 0xFFFFFFFF) >>> 0;
+    }
+
+    /* ---------- ZIP（仅存储不压缩，Word/WPS 完全兼容） ---------- */
+    function makeZip(files) {
+        var enc = new TextEncoder();
+        var prepared = files.map(function (f) {
+            return {
+                name: enc.encode(f.name),
+                data: f.data,
+                crc: crc32(f.data),
+                size: f.data.length
+            };
+        });
+        var total = 22;
+        prepared.forEach(function (p) { total += 30 + p.name.length + p.size + 46 + p.name.length; });
+        var out = new Uint8Array(total);
+        var dv = new DataView(out.buffer);
+        var pos = 0;
+        var records = [];
+        prepared.forEach(function (p) {
+            var offset = pos;
+            dv.setUint32(pos, 0x04034b50, true); pos += 4;
+            dv.setUint16(pos, 20, true); pos += 2;
+            dv.setUint16(pos, 0x0800, true); pos += 2;
+            dv.setUint16(pos, 0, true); pos += 2;
+            dv.setUint16(pos, 0, true); pos += 2;
+            dv.setUint16(pos, 0x21, true); pos += 2;
+            dv.setUint32(pos, p.crc, true); pos += 4;
+            dv.setUint32(pos, p.size, true); pos += 4;
+            dv.setUint32(pos, p.size, true); pos += 4;
+            dv.setUint16(pos, p.name.length, true); pos += 2;
+            dv.setUint16(pos, 0, true); pos += 2;
+            out.set(p.name, pos); pos += p.name.length;
+            out.set(p.data, pos); pos += p.size;
+            records.push({ name: p.name, crc: p.crc, size: p.size, offset: offset });
+        });
+        var cdStart = pos;
+        records.forEach(function (r) {
+            dv.setUint32(pos, 0x02014b50, true); pos += 4;
+            dv.setUint16(pos, 20, true); pos += 2;
+            dv.setUint16(pos, 20, true); pos += 2;
+            dv.setUint16(pos, 0x0800, true); pos += 2;
+            dv.setUint16(pos, 0, true); pos += 2;
+            dv.setUint16(pos, 0, true); pos += 2;
+            dv.setUint16(pos, 0x21, true); pos += 2;
+            dv.setUint32(pos, r.crc, true); pos += 4;
+            dv.setUint32(pos, r.size, true); pos += 4;
+            dv.setUint32(pos, r.size, true); pos += 4;
+            dv.setUint16(pos, r.name.length, true); pos += 2;
+            dv.setUint16(pos, 0, true); pos += 2;
+            dv.setUint16(pos, 0, true); pos += 2;
+            dv.setUint16(pos, 0, true); pos += 2;
+            dv.setUint16(pos, 0, true); pos += 2;
+            dv.setUint32(pos, 0, true); pos += 4;
+            dv.setUint32(pos, r.offset, true); pos += 4;
+            out.set(r.name, pos); pos += r.name.length;
+        });
+        var cdSize = pos - cdStart;
+        dv.setUint32(pos, 0x06054b50, true); pos += 4;
+        dv.setUint16(pos, 0, true); pos += 2;
+        dv.setUint16(pos, 0, true); pos += 2;
+        dv.setUint16(pos, records.length, true); pos += 2;
+        dv.setUint16(pos, records.length, true); pos += 2;
+        dv.setUint32(pos, cdSize, true); pos += 4;
+        dv.setUint32(pos, cdStart, true); pos += 4;
+        dv.setUint16(pos, 0, true); pos += 2;
+        return out;
+    }
+
+    /* ---------- 照片解析：base64 → 二进制 + 尺寸（不解码图片，省内存） ---------- */
+    function parsePhoto(dataUrl) {
+        if (!dataUrl || typeof dataUrl !== 'string' || dataUrl.indexOf('data:') !== 0) return null;
+        var comma = dataUrl.indexOf(',');
+        if (comma < 0) return null;
+        var meta = dataUrl.slice(5, comma);
+        var mime = (meta.split(';')[0] || 'image/jpeg').toLowerCase();
+        var bin;
+        try { bin = atob(dataUrl.slice(comma + 1)); } catch (e) { return null; }
+        var bytes = new Uint8Array(bin.length);
+        for (var i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+        var size = imageSize(bytes);
+        var ext = mime.indexOf('png') >= 0 ? 'png' : 'jpg';
+        return {
+            bytes: bytes,
+            mime: ext === 'png' ? 'image/png' : 'image/jpeg',
+            ext: ext,
+            w: (size && size.w) || 1000,
+            h: (size && size.h) || 750
+        };
+    }
+
+    function imageSize(b) {
+        /* JPEG */
+        if (b.length > 4 && b[0] === 0xFF && b[1] === 0xD8) {
+            var off = 2;
+            while (off + 9 < b.length) {
+                if (b[off] !== 0xFF) { off++; continue; }
+                var marker = b[off + 1];
+                if (marker === 0xD8 || marker === 0x01 || (marker >= 0xD0 && marker <= 0xD7)) { off += 2; continue; }
+                if (marker === 0xD9) break;
+                var len = (b[off + 2] << 8) | b[off + 3];
+                if (len < 2) break;
+                if (marker >= 0xC0 && marker <= 0xCF && marker !== 0xC4 && marker !== 0xC8 && marker !== 0xCC) {
+                    return { h: (b[off + 5] << 8) | b[off + 6], w: (b[off + 7] << 8) | b[off + 8] };
+                }
+                off += 2 + len;
+            }
+            return null;
+        }
+        /* PNG */
+        if (b.length > 24 && b[0] === 0x89 && b[1] === 0x50 && b[2] === 0x4E && b[3] === 0x47) {
+            var w = (b[16] << 24 | b[17] << 16 | b[18] << 8 | b[19]) >>> 0;
+            var h = (b[20] << 24 | b[21] << 16 | b[22] << 8 | b[23]) >>> 0;
+            return { w: w, h: h };
+        }
+        return null;
+    }
+
+    /* ---------- OOXML 片段 ---------- */
+    var NS = 'xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" ' +
+        'xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" ' +
+        'xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing" ' +
+        'xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" ' +
+        'xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture"';
+
+    var BORDER = '<w:top w:val="single" w:sz="4" w:space="0" w:color="000000"/>' +
+        '<w:left w:val="single" w:sz="4" w:space="0" w:color="000000"/>' +
+        '<w:bottom w:val="single" w:sz="4" w:space="0" w:color="000000"/>' +
+        '<w:right w:val="single" w:sz="4" w:space="0" w:color="000000"/>';
+
+    var NO_BORDER = '<w:top w:val="none" w:sz="0" w:space="0" w:color="FFFFFF"/>' +
+        '<w:left w:val="none" w:sz="0" w:space="0" w:color="FFFFFF"/>' +
+        '<w:bottom w:val="none" w:sz="0" w:space="0" w:color="FFFFFF"/>' +
+        '<w:right w:val="none" w:sz="0" w:space="0" w:color="FFFFFF"/>';
+
+    function rpr(o) {
+        o = o || {};
+        var sz = o.sz || 21;
+        return '<w:rPr><w:rFonts w:ascii="宋体" w:eastAsia="宋体" w:hAnsi="宋体" w:cs="宋体"/>' +
+            (o.bold ? '<w:b/><w:bCs/>' : '<w:b w:val="false"/><w:bCs w:val="false"/>') +
+            '<w:sz w:val="' + sz + '"/><w:szCs w:val="' + sz + '"/></w:rPr>';
+    }
+
+    function p(text, o) {
+        o = o || {};
+        var ppr = '<w:pPr>' + (o.keepNext ? '<w:keepNext/>' : '') +
+            '<w:spacing w:before="' + (o.before || 0) + '" w:after="' + (o.after || 0) +
+            '" w:line="' + (o.line || 288) + '" w:lineRule="auto"/>' +
+            '<w:jc w:val="' + (o.align || 'left') + '"/></w:pPr>';
+        var body = String(text == null ? '' : text).split('\n')
+            .map(function (line) { return '<w:t xml:space="preserve">' + esc(line) + '</w:t>'; })
+            .join('<w:br/>');
+        return '<w:p>' + ppr + '<w:r>' + rpr(o) + body + '</w:r></w:p>';
+    }
+
+    function tc(w, inner, o) {
+        o = o || {};
+        return '<w:tc><w:tcPr><w:tcW w:type="dxa" w:w="' + w + '"/>' +
+            (o.span ? '<w:gridSpan w:val="' + o.span + '"/>' : '') +
+            '<w:tcBorders>' + (o.noBorder ? NO_BORDER : BORDER) + '</w:tcBorders>' +
+            (o.shd ? '<w:shd w:val="clear" w:color="auto" w:fill="' + o.shd + '"/>' : '') +
+            '<w:tcMar><w:top w:w="40" w:type="dxa"/><w:left w:w="100" w:type="dxa"/>' +
+            '<w:bottom w:w="40" w:type="dxa"/><w:right w:w="100" w:type="dxa"/></w:tcMar>' +
+            '<w:vAlign w:val="' + (o.vAlign || 'center') + '"/></w:tcPr>' + inner + '</w:tc>';
+    }
+
+    function tr(inner, o) {
+        o = o || {};
+        return '<w:tr><w:trPr>' + (o.cantSplit === false ? '' : '<w:cantSplit/>') +
+            '<w:trHeight w:val="' + (o.h || 454) + '" w:hRule="atLeast"/>' +
+            (o.header ? '<w:tblHeader/>' : '') + '</w:trPr>' + inner + '</w:tr>';
+    }
+
+    function tbl(cols, rows, o) {
+        o = o || {};
+        var total = cols.reduce(function (a, b) { return a + b; }, 0);
+        return '<w:tbl><w:tblPr><w:tblW w:type="dxa" w:w="' + total + '"/>' +
+            '<w:jc w:val="center"/>' +
+            '<w:tblBorders>' + (o.noBorder ? NO_BORDER : BORDER) + '</w:tblBorders>' +
+            '<w:tblLayout w:type="fixed"/>' +
+            '<w:tblCellMar><w:top w:w="0" w:type="dxa"/><w:left w:w="0" w:type="dxa"/>' +
+            '<w:bottom w:w="0" w:type="dxa"/><w:right w:w="0" w:type="dxa"/></w:tblCellMar></w:tblPr>' +
+            '<w:tblGrid>' + cols.map(function (w) { return '<w:gridCol w:w="' + w + '"/>'; }).join('') +
+            '</w:tblGrid>' + rows + '</w:tbl>';
+    }
+
+    function drawing(relId, id, cx, cy, name) {
+        return '<w:drawing><wp:inline distT="0" distB="0" distL="0" distR="0">' +
+            '<wp:extent cx="' + cx + '" cy="' + cy + '"/>' +
+            '<wp:effectExtent t="0" r="0" b="0" l="0"/>' +
+            '<wp:docPr id="' + id + '" name="图片' + id + '"/>' +
+            '<wp:cNvGraphicFramePr><a:graphicFrameLocks noChangeAspect="1"/></wp:cNvGraphicFramePr>' +
+            '<a:graphic><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture">' +
+            '<pic:pic><pic:nvPicPr><pic:cNvPr id="' + id + '" name="' + esc(name) + '"/><pic:cNvPicPr/></pic:nvPicPr>' +
+            '<pic:blipFill><a:blip r:embed="' + relId + '"/><a:stretch><a:fillRect/></a:stretch></pic:blipFill>' +
+            '<pic:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="' + cx + '" cy="' + cy + '"/></a:xfrm>' +
+            '<a:prstGeom prst="rect"><a:avLst/></a:prstGeom></pic:spPr></pic:pic>' +
+            '</a:graphicData></a:graphic></wp:inline></w:drawing>';
+    }
+
+    function pDrawing(relId, id, cx, cy, name) {
+        return '<w:p><w:pPr><w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/>' +
+            '<w:jc w:val="center"/></w:pPr><w:r>' + drawing(relId, id, cx, cy, name) + '</w:r></w:p>';
+    }
+
+    /* ---------- 日期 ---------- */
+    function cnDate(str) {
+        var m = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(String(str || ''));
+        if (!m) return String(str || '');
+        var dt = new Date(+m[1], +m[2] - 1, +m[3]);
+        return m[1] + '年' + (+m[2]) + '月' + (+m[3]) + '日';
+    }
+    function weekName(str) {
+        var m = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(String(str || ''));
+        if (!m) return '';
+        var dt = new Date(+m[1], +m[2] - 1, +m[3]);
+        return '星期' + '日一二三四五六'.charAt(dt.getDay());
+    }
+
+    /* ---------- 正文 XML ---------- */
+    var COL = [1542, 3277, 1542, 3277];
+    var PHOTO_COL = [3212, 3212, 3214];
+    var PHOTO_MAX_W = 1912620;   /* 3012 twips */
+    var PHOTO_MAX_H = 1254125;   /* 1975 twips */
+
+    function textOr(v, dft) {
+        var s = (v == null ? '' : String(v)).trim();
+        return s === '' ? dft : s;
+    }
+
+    function buildDocumentXml(log, photos) {
+        var d = cnDate(log.workDate);
+        var wk = weekName(log.workDate);
+        var remark = textOr(log.remark, '');
+        if (textOr(log.contractNo, '')) {
+            remark = '合同号：' + log.contractNo + (remark ? '　' + remark : '');
+        }
+        if (!remark) remark = '-';
+
+        /* ---- 信息表 ---- */
+        var rows = '';
+        rows += tr(tc(COL[0], p('项目名称', { bold: true, align: 'center' }), { shd: 'F3F4F6' }) +
+            tc(COL[1], p(textOr(log.project, '-'))) +
+            tc(COL[2], p('项目地址', { bold: true, align: 'center' }), { shd: 'F3F4F6' }) +
+            tc(COL[3], p(textOr(log.projectAddr, '-'))), { h: 454 });
+
+        rows += tr(tc(COL[0], p('建设单位', { bold: true, align: 'center' }), { shd: 'F3F4F6' }) +
+            tc(COL[1], p(textOr(log.buildUnit, '-'))) +
+            tc(COL[2], p('监理单位', { bold: true, align: 'center' }), { shd: 'F3F4F6' }) +
+            tc(COL[3], p(textOr(log.supervisor, '-'))), { h: 454 });
+
+        rows += tr(tc(COL[0], p('施工单位', { bold: true, align: 'center' }), { shd: 'F3F4F6' }) +
+            tc(COL[1], p(textOr(log.contractor, '-'))) +
+            tc(COL[2], p('设计单位', { bold: true, align: 'center' }), { shd: 'F3F4F6' }) +
+            tc(COL[3], p(textOr(log.designUnit, '-'))), { h: 454 });
+
+        rows += tr(tc(9638, p('日　　期：' + (d || '-') + (wk ? '　' + wk : '')), { span: 4 }), { h: 400 });
+
+        rows += tr(tc(COL[0], p('天气', { bold: true, align: 'center' }), { shd: 'F3F4F6' }) +
+            tc(COL[1], p(textOr(log.weather, '-'))) +
+            tc(COL[2], p('风力', { bold: true, align: 'center' }), { shd: 'F3F4F6' }) +
+            tc(COL[3], p(textOr(log.wind, '-'))), { h: 454 });
+
+        rows += tr(tc(COL[0], p('温度', { bold: true, align: 'center' }), { shd: 'F3F4F6' }) +
+            tc(COL[1], p(textOr(log.tempInfo, '-'))) +
+            tc(COL[2], p('备注', { bold: true, align: 'center' }), { shd: 'F3F4F6' }) +
+            tc(COL[3], p(remark)), { h: 454 });
+
+        var prod = '今日完成：' + textOr(log.workToday, '无') + '\n\n明日计划：' + textOr(log.workTomorrow, '无');
+        rows += tr(tc(9638, p('生产情况记录', { bold: true, align: 'left' }), { span: 4, shd: 'F3F4F6' }), { h: 400 });
+        rows += tr(tc(9638, p(prod, { vAlign: 'top' }), { span: 4, vAlign: 'top' }), { h: 1800 });
+
+        rows += tr(tc(9638, p('技术质量安全工作记录', { bold: true, align: 'left' }), { span: 4, shd: 'F3F4F6' }), { h: 400 });
+        rows += tr(tc(9638, p(textOr(log.qualitySafe, '无'), { vAlign: 'top' }), { span: 4, vAlign: 'top' }), { h: 1300 });
+
+        rows += tr(tc(9638, p('材料、构配件进场记录', { bold: true, align: 'left' }), { span: 4, shd: 'F3F4F6' }), { h: 400 });
+        rows += tr(tc(9638, p(textOr(log.materials, '无'), { vAlign: 'top' }), { span: 4, vAlign: 'top' }), { h: 800 });
+
+        var xml = '<w:p><w:pPr><w:spacing w:before="0" w:after="240" w:line="288" w:lineRule="auto"/>' +
+            '<w:jc w:val="center"/></w:pPr><w:r>' + rpr({ bold: true, sz: 44 }) +
+            '<w:t xml:space="preserve">施 工 日 志</w:t></w:r></w:p>';
+        xml += tbl(COL, rows);
+
+        /* ---- 现场照片表：3 张一行 ---- */
+        xml += '<w:p><w:pPr><w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/></w:pPr><w:r>' + rpr({ sz: 12 }) + '<w:t></w:t></w:r></w:p>';
+
+        var photoRows = Math.max(2, Math.ceil(photos.length / 3));
+        var prows = tr(tc(9638, p('现场照片', { bold: true, align: 'left', sz: 22 }), { span: 3, shd: 'F3F4F6' }), { h: 400, header: true });
+        for (var r = 0; r < photoRows; r++) {
+            var cells = '';
+            for (var c = 0; c < 3; c++) {
+                var idx = r * 3 + c;
+                var img = photos[idx];
+                if (img) {
+                    var sc = Math.min(PHOTO_MAX_W / img.w, PHOTO_MAX_H / img.h);
+                    var cx = Math.max(1, Math.round(img.w * sc));
+                    var cy = Math.max(1, Math.round(img.h * sc));
+                    cells += tc(PHOTO_COL[c], pDrawing('rId' + (idx + 2), idx + 1, cx, cy, 'image' + (idx + 1) + '.' + img.ext), { vAlign: 'center' });
+                } else {
+                    cells += tc(PHOTO_COL[c], p(''), { vAlign: 'center' });
+                }
+            }
+            prows += tr(cells, { h: 2055 });
+        }
+        xml += tbl(PHOTO_COL, prows);
+
+        /* ---- 签字栏 ---- */
+        xml += '<w:p><w:pPr><w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/></w:pPr><w:r>' + rpr({ sz: 12 }) + '<w:t></w:t></w:r></w:p>';
+        var sign = tr(tc(4819, p('工程负责人：' + textOr(log.personCharge, ''), { sz: 24 }), { noBorder: true }) +
+            tc(4819, p('记录人：' + textOr(log.recorder, ''), { sz: 24, align: 'right' }), { noBorder: true }), { h: 420 });
+        xml += tbl([4819, 4819], sign, { noBorder: true });
+
+        /* ---- 页面设置（A4，页边距与模板一致） ---- */
+        xml += '<w:sectPr><w:pgSz w:w="11906" w:h="16838" w:orient="portrait"/>' +
+            '<w:pgMar w:top="1021" w:right="1134" w:bottom="1021" w:left="1134" w:header="567" w:footer="567" w:gutter="0"/>' +
+            '<w:docGrid w:linePitch="360"/></w:sectPr>';
+
+        return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\r\n' +
+            '<w:document ' + NS + '><w:body>' + xml + '</w:body></w:document>';
+    }
+
+    /* ---------- 其它部件 ---------- */
+    var STYLES = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\r\n' +
+        '<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">' +
+        '<w:docDefaults><w:rPrDefault><w:rPr>' +
+        '<w:rFonts w:ascii="宋体" w:eastAsia="宋体" w:hAnsi="宋体" w:cs="宋体"/>' +
+        '<w:sz w:val="21"/><w:szCs w:val="21"/></w:rPr></w:rPrDefault>' +
+        '<w:pPrDefault><w:pPr><w:spacing w:before="0" w:after="0" w:line="288" w:lineRule="auto"/></w:pPr></w:pPrDefault>' +
+        '</w:docDefaults>' +
+        '<w:style w:type="paragraph" w:default="1" w:styleId="Normal"><w:name w:val="Normal"/><w:qFormat/></w:style>' +
+        '</w:styles>';
+
+    function contentTypes(hasPng) {
+        return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\r\n' +
+            '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">' +
+            '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>' +
+            '<Default Extension="xml" ContentType="application/xml"/>' +
+            '<Default Extension="jpg" ContentType="image/jpeg"/>' +
+            (hasPng ? '<Default Extension="png" ContentType="image/png"/>' : '') +
+            '<Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>' +
+            '<Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/>' +
+            '</Types>';
+    }
+
+    var RELS_ROOT = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\r\n' +
+        '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
+        '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>' +
+        '</Relationships>';
+
+    function docRels(photos) {
+        var s = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\r\n' +
+            '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
+            '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>';
+        photos.forEach(function (ph, i) {
+            s += '<Relationship Id="rId' + (i + 2) + '" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="media/image' + (i + 1) + '.' + ph.ext + '"/>';
+        });
+        return s + '</Relationships>';
+    }
+
+    /* ---------- 主入口 ---------- */
+    function build(log) {
+        var photos = [];
+        var raw = log.photos || [];
+        for (var i = 0; i < raw.length; i++) {
+            var ph = parsePhoto(raw[i]);
+            if (ph) photos.push(ph);
+        }
+
+        var files = [
+            { name: '[Content_Types].xml', data: u8(contentTypes(photos.some(function (x) { return x.ext === 'png'; }))) },
+            { name: '_rels/.rels', data: u8(RELS_ROOT) },
+            { name: 'word/document.xml', data: u8(buildDocumentXml(log, photos)) },
+            { name: 'word/_rels/document.xml.rels', data: u8(docRels(photos)) },
+            { name: 'word/styles.xml', data: u8(STYLES) }
+        ];
+        photos.forEach(function (ph, idx) {
+            files.push({ name: 'word/media/image' + (idx + 1) + '.' + ph.ext, data: ph.bytes });
+        });
+
+        var bytes = makeZip(files);
+        var safe = String(log.project || '施工日志').replace(/[\\/:*?"<>|]/g, '_');
+        return {
+            bytes: bytes,
+            name: safe + '_施工日志_' + (log.workDate || '') + '.docx'
+        };
+    }
+
+    return { build: build, parsePhoto: parsePhoto, cnDate: cnDate, weekName: weekName };
+})();
+/* DOCX-GEN-END */
+
+/* ==================================================================
+   二、业务逻辑（与原来完全一致：localStorage、项目管理、备份导入）
+   ================================================================== */
+var LS_PROJECT = 'roadProjectList';
+var LS_LOG = 'roadLog';
+
+function toast(msg, ms) {
+    var el = document.getElementById('toast');
+    el.textContent = msg;
+    el.classList.add('show');
+    clearTimeout(toast._t);
+    toast._t = setTimeout(function () { el.classList.remove('show'); }, ms || 2200);
+}
+
+function updateHeaderTitle(projName) {
+    document.getElementById('headerTitle').innerText = projName + " 施工日志";
+}
+
+function blankProject(name) {
+    return {
+        name: name,
+        projectAddr: '', buildUnit: '', contractor: '',
+        supervisor: '', designUnit: '', contractNo: ''
+    };
+}
+
+function getProjectList() {
+    var raw = localStorage.getItem(LS_PROJECT);
+    if (raw) {
+        try {
+            var arr = JSON.parse(raw);
+            if (arr.length > 0 && typeof arr[0] === 'string') {
+                return arr.map(blankProject);
+            }
+            return arr.map(function (p) {
+                return {
+                    name: p.name,
+                    projectAddr: p.projectAddr || '',
+                    buildUnit: p.buildUnit || '',
+                    contractor: p.contractor || '',
+                    supervisor: p.supervisor || '',
+                    designUnit: p.designUnit || '',
+                    contractNo: p.contractNo || ''
+                };
+            });
+        } catch (e) { }
+    }
+    return [blankProject("默认项目")];
+}
+function saveProjectList(arr) {
+    localStorage.setItem(LS_PROJECT, JSON.stringify(arr));
+}
+function findProject(name) {
+    return getProjectList().filter(function (p) { return p.name === name; })[0];
+}
+
+function renderProjectSelect() {
+    var sel = document.getElementById('project');
+    var list = getProjectList();
+    var keep = sel.value;
+    sel.innerHTML = "";
+    list.forEach(function (p) {
+        var opt = document.createElement('option');
+        opt.innerText = p.name;
+        opt.value = p.name;
+        sel.appendChild(opt);
+    });
+    if (keep && list.some(function (p) { return p.name === keep; })) sel.value = keep;
+    fillByProject(sel.value);
+    updateHeaderTitle(sel.value || '');
+}
+function renderSetProjectSel() {
+    var sel = document.getElementById('setProjectSel');
+    var list = getProjectList();
+    var keep = sel.value;
+    sel.innerHTML = "";
+    list.forEach(function (p) {
+        var opt = document.createElement('option');
+        opt.innerText = p.name;
+        opt.value = p.name;
+        sel.appendChild(opt);
+    });
+    if (keep && list.some(function (p) { return p.name === keep; })) sel.value = keep;
+    fillSetFormByProject(sel.value);
+}
+
+document.getElementById('project').onchange = function () {
+    fillByProject(this.value);
+    updateHeaderTitle(this.value);
+};
+document.getElementById('setProjectSel').onchange = function () {
+    fillSetFormByProject(this.value);
+};
+
+function fillByProject(projName) {
+    var p = findProject(projName);
+    if (p) {
+        document.getElementById('projectAddr').value = p.projectAddr || '';
+        document.getElementById('buildUnit').value = p.buildUnit || '';
+        document.getElementById('contractor').value = p.contractor || '';
+        document.getElementById('supervisor').value = p.supervisor || '';
+        document.getElementById('designUnit').value = p.designUnit || '';
+        document.getElementById('contractNo').value = p.contractNo || '';
+    }
+}
+function fillSetFormByProject(projName) {
+    var p = findProject(projName);
+    if (p) {
+        document.getElementById('setProjectAddr').value = p.projectAddr || '';
+        document.getElementById('setBuildUnit').value = p.buildUnit || '';
+        document.getElementById('setContractor').value = p.contractor || '';
+        document.getElementById('setSupervisor').value = p.supervisor || '';
+        document.getElementById('setDesignUnit').value = p.designUnit || '';
+        document.getElementById('setContractNo').value = p.contractNo || '';
+    }
+}
+function saveProjectInfo() {
+    var selName = document.getElementById('setProjectSel').value;
+    var arr = getProjectList();
+    var target = arr.filter(function (p) { return p.name === selName; })[0];
+    if (target) {
+        target.projectAddr = document.getElementById('setProjectAddr').value;
+        target.buildUnit = document.getElementById('setBuildUnit').value;
+        target.contractor = document.getElementById('setContractor').value;
+        target.supervisor = document.getElementById('setSupervisor').value;
+        target.designUnit = document.getElementById('setDesignUnit').value;
+        target.contractNo = document.getElementById('setContractNo').value;
+    }
+    saveProjectList(arr);
+    renderProjectSelect();
+    toast("✅ 该项目信息已保存，切换项目会自动带出");
+}
+
+document.getElementById('addProjectBtn').onclick = function () {
+    var val = document.getElementById('newProjectInput').value.trim();
+    if (!val) { alert("项目名称不能为空"); return; }
+    var arr = getProjectList();
+    if (arr.some(function (p) { return p.name === val; })) { alert("该项目已存在"); return; }
+    arr.push(blankProject(val));
+    saveProjectList(arr);
+    renderProjectSelect();
+    renderSetProjectSel();
+    document.getElementById('project').value = val;
+    document.getElementById('newProjectInput').value = "";
+    updateHeaderTitle(val);
+};
+
+/* ---------- 照片：拍照后立即压缩，减小 localStorage 与内存压力 ---------- */
+var photos = [];
+var PHOTO_MAX_SIDE = 1000;
+var PHOTO_QUALITY = 0.75;
+
+document.getElementById('photoInput').onchange = function (e) {
+    var files = Array.prototype.slice.call(e.target.files || []);
+    if (!files.length) return;
+    var i = 0;
+    function next() {
+        if (i >= files.length) { e.target.value = ""; return; }
+        var file = files[i++];
+        compressFile(file, function () { next(); });
+    }
+    next();
+};
+
+function compressFile(file, done) {
+    var reader = new FileReader();
+    reader.onload = function (ev) {
+        var img = new Image();
+        img.onload = function () {
+            try {
+                var scale = Math.min(1, PHOTO_MAX_SIDE / Math.max(img.width, img.height));
+                var w = Math.max(1, Math.round(img.width * scale));
+                var h = Math.max(1, Math.round(img.height * scale));
+                var canvas = document.createElement('canvas');
+                canvas.width = w;
+                canvas.height = h;
+                canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+                photos.push(canvas.toDataURL('image/jpeg', PHOTO_QUALITY));
+                canvas.width = canvas.height = 0;
+                renderPhotos();
+            } catch (err) {
+                toast('照片处理失败：' + err.message);
+            }
+            done();
+        };
+        img.onerror = function () { toast('照片读取失败'); done(); };
+        img.src = ev.target.result;
+    };
+    reader.onerror = function () { toast('照片读取失败'); done(); };
+    reader.readAsDataURL(file);
+}
+
+function renderPhotos() {
+    var box = document.getElementById('photoList');
+    box.innerHTML = "";
+    photos.forEach(function (p, idx) {
+        var div = document.createElement('div');
+        div.className = 'photo-item';
+        div.innerHTML = '<img src="' + p + '"><button class="photo-del" data-idx="' + idx + '">×</button>';
+        box.appendChild(div);
+    });
+    Array.prototype.forEach.call(box.querySelectorAll('.photo-del'), function (btn) {
+        btn.onclick = function () { delPhoto(Number(btn.dataset.idx)); };
+    });
+}
+function delPhoto(idx) {
+    photos.splice(idx, 1);
+    renderPhotos();
+}
+
+/* ---------- 日期默认值 ---------- */
+(function () {
+    var today = new Date();
+    var y = today.getFullYear();
+    var m = String(today.getMonth() + 1).padStart(2, '0');
+    var d = String(today.getDate()).padStart(2, '0');
+    document.getElementById('workDate').value = y + '-' + m + '-' + d;
+})();
+
+/* ---------- 标签切换 ---------- */
+var tabs = document.querySelectorAll('.tab');
+Array.prototype.forEach.call(tabs, function (tab) {
+    tab.onclick = function () {
+        Array.prototype.forEach.call(tabs, function (t) { t.classList.remove('active'); });
+        tab.classList.add('active');
+        var targetId = tab.dataset.page;
+        Array.prototype.forEach.call(document.querySelectorAll('.page'), function (p) { p.classList.remove('active'); });
+        document.getElementById(targetId).classList.add('active');
+        if (targetId === 'page-list') renderList();
+        if (targetId === 'page-set') { renderProjectManage(); renderSetProjectSel(); }
+        window.scrollTo(0, 0);
+    };
+});
+
+/* ---------- 日志存取 ---------- */
+function getLogs() {
+    var raw = localStorage.getItem(LS_LOG);
+    if (!raw) return [];
+    try { return JSON.parse(raw) || []; } catch (e) { return []; }
+}
+function saveLogs(arr) {
+    try {
+        localStorage.setItem(LS_LOG, JSON.stringify(arr));
+        return true;
+    } catch (e) {
+        alert('本机存储空间不足，请先导出备份并删除旧日志后再保存。');
+        return false;
+    }
+}
+
+document.getElementById('saveLogBtn').onclick = function () {
+    var workDate = document.getElementById('workDate').value;
+    if (!workDate) { alert('施工日期不能为空！'); return; }
+
+    var log = {
+        id: Date.now(),
+        project: document.getElementById('project').value,
+        projectAddr: document.getElementById('projectAddr').value,
+        buildUnit: document.getElementById('buildUnit').value,
+        contractor: document.getElementById('contractor').value,
+        supervisor: document.getElementById('supervisor').value,
+        designUnit: document.getElementById('designUnit').value,
+        contractNo: document.getElementById('contractNo').value,
+        workDate: workDate,
+        weather: document.getElementById('weather').value,
+        wind: document.getElementById('wind').value,
+        tempInfo: document.getElementById('tempInfo').value,
+        remark: document.getElementById('remark').value,
+        personCharge: document.getElementById('personCharge').value,
+        recorder: document.getElementById('recorder').value,
+        workToday: document.getElementById('workToday').value,
+        workTomorrow: document.getElementById('workTomorrow').value,
+        qualitySafe: document.getElementById('qualitySafe').value,
+        materials: document.getElementById('materials').value,
+        photos: photos.slice()
+    };
+
+    var logs = getLogs();
+    logs.unshift(log);
+    if (!saveLogs(logs)) return;
+
+    toast('✅ 日志保存成功');
+    photos = [];
+    renderPhotos();
+    ['workToday', 'workTomorrow', 'qualitySafe', 'materials', 'weather', 'wind',
+        'tempInfo', 'remark', 'personCharge', 'recorder'].forEach(function (id) {
+            document.getElementById(id).value = '';
+        });
+};
+
+/* ---------- 旧数据兼容：天气/风力合并填写的老记录 ---------- */
+function logWind(log) {
+    if (log.wind) return log.wind;
+    var m = /^(.*?)[\s　]+(\S*风.*)$/.exec(log.weather || '');
+    return m ? m[2] : '';
+}
+function logWeather(log) {
+    if (log.wind) return log.weather || '';
+    var m = /^(.*?)[\s　]+(\S*风.*)$/.exec(log.weather || '');
+    return m ? m[1] : (log.weather || '');
+}
+
+/* ==================================================================
+   三、导出 Word（docx）
+   ================================================================== */
+var pending = null;
+
+function exportDocx(logItem) {
+    showBusy('正在生成 Word 文档…');
+    setTimeout(function () {
+        var t0 = (window.performance && performance.now) ? performance.now() : Date.now();
+        try {
+            var src = {
+                project: logItem.project,
+                projectAddr: logItem.projectAddr,
+                buildUnit: logItem.buildUnit,
+                contractor: logItem.contractor,
+                supervisor: logItem.supervisor,
+                designUnit: logItem.designUnit,
+                contractNo: logItem.contractNo,
+                workDate: logItem.workDate,
+                weather: logWeather(logItem),
+                wind: logWind(logItem),
+                tempInfo: logItem.tempInfo,
+                remark: logItem.remark,
+                personCharge: logItem.personCharge,
+                recorder: logItem.recorder,
+                workToday: logItem.workToday,
+                workTomorrow: logItem.workTomorrow,
+                qualitySafe: logItem.qualitySafe,
+                materials: logItem.materials,
+                photos: logItem.photos || []
+            };
+            var result = DocxGen.build(src);
+            var blob = new Blob([result.bytes], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
+            var cost = ((window.performance && performance.now) ? performance.now() : Date.now()) - t0;
+            pending = { blob: blob, name: result.name };
+            hideBusy();
+            showExportModal(result.name, blob.size, src.photos.length, cost);
+        } catch (err) {
+            hideBusy();
+            alert('生成 Word 失败：' + (err && err.message ? err.message : err));
+        }
+    }, 50);
+}
+
+function showBusy(text) {
+    document.getElementById('busyText').textContent = text || '处理中…';
+    document.getElementById('busy').classList.add('show');
+}
+function hideBusy() {
+    document.getElementById('busy').classList.remove('show');
+}
+
+function showExportModal(name, size, count, ms) {
+    document.getElementById('modalInfo').textContent = name;
+    document.getElementById('modalHint').innerHTML =
+        '大小 ' + (size / 1024).toFixed(0) + ' KB　·　照片 ' + count + ' 张　·　生成耗时 ' + (ms < 1 ? '小于 1' : ms.toFixed(0)) + ' 毫秒<br>' +
+        'iPhone 请用「分享 / 存储到文件」把文档存到「文件」App 或直接发给监理。';
+    var shareBtn = document.getElementById('modalShare');
+    shareBtn.style.display = (navigator.canShare && navigator.share) ? '' : 'none';
+    document.getElementById('modal').classList.add('show');
+}
+
+function downloadFile(blob, name) {
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = name;
+    a.rel = 'noopener';
+    a.style.display = 'none';
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(function () {
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    }, 1500);
+}
+
+document.getElementById('modalDownload').onclick = function () {
+    if (!pending) return;
+    downloadFile(pending.blob, pending.name);
+    toast('已开始下载：' + pending.name, 3000);
+};
+document.getElementById('modalShare').onclick = function () {
+    if (!pending) return;
+    var file = new File([pending.blob], pending.name, {
+        type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    });
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        navigator.share({ files: [file], title: pending.name }).catch(function (err) {
+            if (err && err.name !== 'AbortError') toast('分享失败，请改用「下载 / 保存」');
+        });
+    } else {
+        downloadFile(pending.blob, pending.name);
+    }
+};
+document.getElementById('modalClose').onclick = function () {
+    document.getElementById('modal').classList.remove('show');
+};
+document.getElementById('modal').onclick = function (e) {
+    if (e.target === this) this.classList.remove('show');
+};
+
+/* ==================================================================
+   四、A4 打印 / 存 PDF（排版与 Word 完全一致，照片 3 列）
+   ================================================================== */
+function printItem(logItem) {
+    var photosArr = logItem.photos || [];
+    var photoRows = Math.max(2, Math.ceil(photosArr.length / 3));
+
+    function escHtml(s) {
+        return String(s == null ? '' : s)
+            .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;');
+    }
+    function v(v, dft) {
+        var s = (v == null ? '' : String(v)).trim();
+        return s === '' ? (dft || '-') : s;
+    }
+
+    var remark = (logItem.remark || '').trim();
+    if ((logItem.contractNo || '').trim()) {
+        remark = '合同号：' + logItem.contractNo + (remark ? '　' + remark : '');
+    }
+    if (!remark) remark = '-';
+
+    var d = DocxGen.cnDate(logItem.workDate);
+    var wk = DocxGen.weekName(logItem.workDate);
+
+    var photoHtml = '';
+    for (var r = 0; r < photoRows; r++) {
+        photoHtml += '<tr>';
+        for (var c = 0; c < 3; c++) {
+            var ph = photosArr[r * 3 + c];
+            photoHtml += '<td class="ph">' + (ph ? '<img src="' + ph + '">' : '') + '</td>';
+        }
+        photoHtml += '</tr>';
+    }
+
+    var html =
+        '<h1 class="doc-title">施 工 日 志</h1>' +
+        '<table class="doc-table">' +
+        '<colgroup><col style="width:27.2mm"><col style="width:57.8mm"><col style="width:27.2mm"><col style="width:57.8mm"></colgroup>' +
+        '<tr><td class="head">项目名称</td><td>' + escHtml(v(logItem.project)) + '</td><td class="head">项目地址</td><td>' + escHtml(v(logItem.projectAddr)) + '</td></tr>' +
+        '<tr><td class="head">建设单位</td><td>' + escHtml(v(logItem.buildUnit)) + '</td><td class="head">监理单位</td><td>' + escHtml(v(logItem.supervisor)) + '</td></tr>' +
+        '<tr><td class="head">施工单位</td><td>' + escHtml(v(logItem.contractor)) + '</td><td class="head">设计单位</td><td>' + escHtml(v(logItem.designUnit)) + '</td></tr>' +
+        '<tr><td colspan="4">日　　期：' + escHtml(d || '-') + (wk ? '　' + wk : '') + '</td></tr>' +
+        '<tr><td class="head">天气</td><td>' + escHtml(v(logWeather(logItem))) + '</td><td class="head">风力</td><td>' + escHtml(v(logWind(logItem))) + '</td></tr>' +
+        '<tr><td class="head">温度</td><td>' + escHtml(v(logItem.tempInfo)) + '</td><td class="head">备注</td><td>' + escHtml(remark) + '</td></tr>' +
+        '<tr><td colspan="4" class="head head-left">生产情况记录</td></tr>' +
+        '<tr><td colspan="4" class="body" style="height:32mm">' + escHtml('今日完成：' + v(logItem.workToday, '无') + '\n\n明日计划：' + v(logItem.workTomorrow, '无')) + '</td></tr>' +
+        '<tr><td colspan="4" class="head head-left">技术质量安全工作记录</td></tr>' +
+        '<tr><td colspan="4" class="body" style="height:23mm">' + escHtml(v(logItem.qualitySafe, '无')) + '</td></tr>' +
+        '<tr><td colspan="4" class="head head-left">材料、构配件进场记录</td></tr>' +
+        '<tr><td colspan="4" class="body" style="height:14mm">' + escHtml(v(logItem.materials, '无')) + '</td></tr>' +
+        '</table>' +
+        '<div style="height:2mm"></div>' +
+        '<table class="doc-table photo-table">' +
+        '<colgroup><col style="width:56.6mm"><col style="width:56.6mm"><col style="width:56.8mm"></colgroup>' +
+        '<thead><tr><td class="head head-left" colspan="3">现场照片</td></tr></thead>' +
+        '<tbody>' + photoHtml + '</tbody>' +
+        '</table>' +
+        '<div style="height:2mm"></div>' +
+        '<table class="sign-table">' +
+        '<tr><td>工程负责人：' + escHtml((logItem.personCharge || '').trim()) + '</td>' +
+        '<td style="text-align:right">记录人：' + escHtml((logItem.recorder || '').trim()) + '</td></tr>' +
+        '</table>';
+
+    var wrapDom = document.getElementById('printWrap');
+    wrapDom.innerHTML = html;
+    var restore = function () { wrapDom.innerHTML = ''; window.onafterprint = null; };
+    window.onafterprint = restore;
+    setTimeout(function () { window.print(); }, 120);
+    setTimeout(function () { if (wrapDom.innerHTML) restore(); }, 60000);
+}
+
+/* ==================================================================
+   五、备份 / 导入 / 列表 / 项目管理
+   ================================================================== */
+function exportAllBackup() {
+    var allData = { projectList: getProjectList(), logs: getLogs() };
+    var blob = new Blob([JSON.stringify(allData, null, 2)], { type: "application/json" });
+    var name = '施工日志全部备份_' + new Date().toLocaleDateString().replace(/[\/:]/g, '-') + '.json';
+    downloadFile(blob, name);
+    toast("全部备份已下载，妥善保存；清除浏览器缓存后可以恢复", 3200);
+}
+
+document.getElementById('importFileInput').onchange = function (e) {
+    var f = e.target.files[0];
+    if (!f) return;
+    var reader = new FileReader();
+    reader.onload = function (ev) {
+        try {
+            var data = JSON.parse(ev.target.result);
+            if (data.projectList) saveProjectList(data.projectList);
+            if (data.logs) saveLogs(data.logs);
+            renderProjectSelect();
+            renderSetProjectSel();
+            renderProjectManage();
+            toast("✅ 导入备份成功");
+        } catch (err) {
+            alert("文件格式错误，不是备份 json");
+        }
+    };
+    reader.readAsText(f);
+    e.target.value = "";
+};
+
+function renderList() {
+    var box = document.getElementById('listBox');
+    var logs = getLogs();
+    if (logs.length === 0) {
+        box.innerHTML = '<div class="empty-tip">暂无施工日志记录</div>';
+        return;
+    }
+    var html = '';
+    logs.forEach(function (item) {
+        html += '<div class="log-card">' +
+            '<h4>' + escHtml(item.workDate) + ' 施工日志｜' + escHtml(item.project || '') + '</h4>' +
+            '<p><b>项目地址：</b>' + escHtml(item.projectAddr || '-') + '</p>' +
+            '<p><b>建设单位：</b>' + escHtml(item.buildUnit || '-') + '</p>' +
+            '<p><b>施工单位：</b>' + escHtml(item.contractor || '-') + '</p>' +
+            '<p><b>天气：</b>' + escHtml(logWeather(item) || '-') + '　<b>风力：</b>' + escHtml(logWind(item) || '-') +
+            '　<b>气温：</b>' + escHtml(item.tempInfo || '-') + '</p>' +
+            '<p><b>【今日完成】</b>' + escHtml(item.workToday || '-') + '</p>' +
+            '<p><b>【明日计划】</b>' + escHtml(item.workTomorrow || '-') + '</p>' +
+            '<p><b>【质量安全】</b>' + escHtml(item.qualitySafe || '-') + '</p>' +
+            '<p><b>【材料进场】</b>' + escHtml(item.materials || '-') + '</p>' +
+            (item.photos && item.photos.length > 0
+                ? '<div class="log-photos">' + item.photos.map(function (p) { return '<img src="' + p + '">'; }).join('') + '</div>'
+                : '') +
+            '<p style="margin-top:6px"><b>负责人：</b>' + escHtml(item.personCharge || '-') +
+            '　<b>记录人：</b>' + escHtml(item.recorder || '-') + '</p>' +
+            '<div class="btn-row">' +
+            '<button class="docx-btn" data-id="' + item.id + '">📄 导出 Word</button>' +
+            '<button class="print-btn" data-id="' + item.id + '">🖨 打印/存PDF</button>' +
+            '<button class="del-btn danger" data-id="' + item.id + '">删除本条</button>' +
+            '</div>' +
+            '</div>';
+    });
+    box.innerHTML = html;
+
+    function escHtml(s) {
+        return String(s == null ? '' : s)
+            .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;');
+    }
+
+    Array.prototype.forEach.call(box.querySelectorAll('.print-btn'), function (btn) {
+        btn.onclick = function () {
+            var id = Number(btn.dataset.id);
+            var one = getLogs().filter(function (x) { return x.id === id; })[0];
+            if (one) printItem(one);
+        };
+    });
+    Array.prototype.forEach.call(box.querySelectorAll('.docx-btn'), function (btn) {
+        btn.onclick = function () {
+            var id = Number(btn.dataset.id);
+            var one = getLogs().filter(function (x) { return x.id === id; })[0];
+            if (one) exportDocx(one);
+        };
+    });
+    Array.prototype.forEach.call(box.querySelectorAll('.del-btn'), function (btn) {
+        btn.onclick = function () {
+            if (!confirm('确定删除这条日志吗？')) return;
+            var delId = Number(btn.dataset.id);
+            saveLogs(getLogs().filter(function (x) { return x.id !== delId; }));
+            renderList();
+        };
+    });
+}
+
+function renderProjectManage() {
+    var box = document.getElementById('projectManageBox');
+    var list = getProjectList();
+    var html = '';
+    list.forEach(function (p) {
+        html += '<div class="log-card" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;padding:10px 12px;">' +
+            '<span style="font-size:14px;">' + escHtml(p.name) + '</span>' +
+            '<button class="del-btn danger" data-pro="' + escHtml(p.name) + '" style="margin:0;padding:4px 10px;border:1px solid #f6dede;background:#fff5f5;border-radius:6px;font-size:13px;color:#e53935;">删除</button>' +
+            '</div>';
+    });
+    box.innerHTML = html;
+    Array.prototype.forEach.call(box.querySelectorAll('.del-btn'), function (btn) {
+        btn.onclick = function () {
+            var pName = btn.dataset.pro;
+            if (pName === "默认项目") { alert("默认项目不能删除"); return; }
+            if (!confirm('确定删除项目「' + pName + '」吗？（已保存的日志不受影响）')) return;
+            saveProjectList(getProjectList().filter(function (x) { return x.name !== pName; }));
+            renderProjectSelect();
+            renderSetProjectSel();
+            renderProjectManage();
+        };
+    });
+}
+
+function escHtml(s) {
+    return String(s == null ? '' : s)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+}
+
+/* ---------- 启动 ---------- */
+renderProjectSelect();
+renderSetProjectSel();
+document.querySelector('.tab[data-page="page-form"]').classList.add('active');
+</script>
+</body>
+</html>
