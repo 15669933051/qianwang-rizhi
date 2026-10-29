@@ -4,358 +4,92 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>施工日志</title>
+    <script src="https://cdn.jsdelivr.net/npm/pizzip@3.1.4/dist/pizzip.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/docxtemplater@3.37.12/build/docxtemplater.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/docxtemplater-image-module-free@1.1.1/dist/image-module.js"></script>
     <style>
-        *{
-            box-sizing: border-box;
-            margin:0;
-            padding:0;
-            font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "SimSun", sans-serif;
-        }
-        body{
-            background:#f0f2f5;
-            padding-bottom:80px;
-        }
-        .header{
-            background:#1a73e8;
-            color:#fff;
-            text-align:center;
-            padding:14px 10px;
-            font-size:17px;
-            font-weight:600;
-            line-height:1.4;
-        }
-        .wrap{
-            padding:12px;
-        }
-        .form-card{
-            background:#fff;
-            border-radius:8px;
-            padding:12px;
-            margin-bottom:12px;
-        }
-        .row{
-            display:flex;
-            gap:8px;
-            margin-bottom:10px;
-            align-items:center;
-        }
-        .row label{
-            width:80px;
-            font-size:14px;
-            color:#333;
-            flex-shrink:0;
-        }
-        .row input, .row select{
-            flex:1;
-            border:1px solid #ddd;
-            border-radius:6px;
-            padding:10px 8px;
-            font-size:15px;
-        }
-        .full-row{
-            margin-bottom:10px;
-        }
-        .full-row label{
-            display:block;
-            font-size:14px;
-            color:#333;
-            margin-bottom:6px;
-            font-weight:500;
-        }
-        .full-row textarea{
-            width:100%;
-            border:1px solid #ddd;
-            border-radius:6px;
-            padding:10px;
-            font-size:15px;
-            min-height:80px;
-            resize:vertical;
-        }
-        .title-row{
-            background:#f5f7fa;
-            padding:8px 10px;
-            border-radius:6px;
-            font-size:14px;
-            font-weight:600;
-            color:#1a73e8;
-            margin-bottom:10px;
-        }
-        .photo-box{
-            margin-top:8px;
-        }
-        .photo-btn{
-            width:100%;
-            padding:12px;
-            background:#e8f0fe;
-            border:1px dashed #1a73e8;
-            border-radius:6px;
-            color:#1a73e8;
-            font-size:15px;
-            text-align:center;
-        }
-        .photo-list{
-            display:flex;
-            flex-wrap:wrap;
-            gap:8px;
-            margin-top:8px;
-        }
-        .photo-item{
-            width:80px;
-            height:80px;
-            border-radius:6px;
-            overflow:hidden;
-            position:relative;
-        }
-        .photo-item img{
-            width:100%;
-            height:100%;
-            object-fit:cover;
-        }
-        .photo-del{
-            position:absolute;
-            top:2px;
-            right:2px;
-            width:20px;
-            height:20px;
-            background:rgba(0,0,0,0.6);
-            color:#fff;
-            border-radius:50%;
-            font-size:12px;
-            text-align:center;
-            line-height:20px;
-        }
-        .save-btn-wrap{
-            padding:12px;
-        }
-        #saveLogBtn{
-            width:100%;
-            padding:14px;
-            background:#1a73e8;
-            color:#fff;
-            border:none;
-            border-radius:8px;
-            font-size:16px;
-            font-weight:bold;
-        }
-        .tab-bar{
-            position:fixed;
-            bottom:0;
-            left:0;
-            width:100%;
-            display:flex;
-            background:#fff;
-            border-top:1px solid #ddd;
-        }
-        .tab{
-            flex:1;
-            text-align:center;
-            padding:12px 0;
-            font-size:15px;
-            color:#666;
-        }
-        .tab.active{
-            color:#1a73e8;
-            font-weight:500;
-        }
-        .page{
-            display:none;
-        }
-        .page.active{
-            display:block;
-        }
-        .log-card{
-            background:#fff;
-            border-radius:8px;
-            padding:12px;
-            margin-bottom:10px;
-        }
-        .log-card h4{
-            font-size:15px;
-            color:#333;
-            margin-bottom:8px;
-            border-bottom:1px solid #eee;
-            padding-bottom:6px;
-        }
-        .log-card p{
-            font-size:13px;
-            line-height:1.6;
-            color:#555;
-            margin-bottom:3px;
-        }
-        .log-card p b{
-            color:#333;
-        }
-        .log-photos{
-            display:flex;
-            flex-wrap:wrap;
-            gap:6px;
-            margin-top:8px;
-        }
-        .log-photos img{
-            width:70px;
-            height:70px;
-            border-radius:4px;
-            object-fit:cover;
-        }
-        .del-btn{
-            margin-top:8px;
-            color:#e53935;
-            border:none;
-            background:none;
-            font-size:14px;
-        }
-        .docx-btn{
-            margin-top:8px;
-            margin-right:12px;
-            color:#1a73e8;
-            border:none;
-            background:none;
-            font-size:14px;
-        }
-        .print-btn{
-            margin-top:8px;
-            margin-right:12px;
-            color:#2e7d32;
-            border:none;
-            background:none;
-            font-size:14px;
-        }
-        .add-row{
-            display:flex;
-            gap:6px;
-            margin-top:6px;
-        }
-        .add-row input{
-            flex:1;
-            border:1px solid #ddd;
-            border-radius:6px;
-            padding:8px;
-            font-size:14px;
-        }
-        .add-row button{
-            width:70px;
-            background:#1a73e8;
-            color:#fff;
-            border:none;
-            border-radius:6px;
-            font-size:14px;
-        }
-        .empty-tip{
-            text-align:center;
-            color:#999;
-            padding:40px 0;
-            font-size:14px;
-        }
-        .list-top-bar{
-            display:flex;
-            gap:10px;
-            margin-bottom:12px;
-            flex-wrap:wrap;
-        }
-        .list-top-bar button{
-            flex:1;
-            min-width:110px;
-            padding:10px;
-            border:none;
-            border-radius:6px;
-            background:#1a73e8;
-            color:#fff;
-            font-size:14px;
-        }
-        @media print{
-            @page{
-                size:A4 portrait;
-                margin:18mm;
-            }
-            body *{visibility:hidden;}
-            #printWrap, #printWrap *{visibility:visible;}
-            #printWrap{
-                position:absolute;
-                left:0;
-                top:0;
-                width:210mm;
-                padding:0;
-                background:#fff;
-            }
-            .tab-bar,.save-btn-wrap,.list-top-bar,.del-btn,.docx-btn,.print-btn{display:none !important;}
-            #printWrap .img-wrap{
-                overflow:hidden;
-                margin:8mm 0;
-                page-break-inside:avoid;
-                mso-page-break-inside:avoid;
-            }
-            #printWrap .img-item{
-                width:calc((100% - 16mm)/3);
-                float:left;
-                margin-right:8mm;
-                margin-bottom:8mm;
-                page-break-inside:avoid;
-                mso-page-break-inside:avoid;
-            }
-            #printWrap .img-item:nth-child(3n){
-                margin-right:0;
-            }
-            #printWrap .img-item img{
-                width:100%;
-                height:auto;
-                max-height:70mm;
-                object-fit:contain;
-                display:block;
-                border:0.2mm solid #aaa;
-            }
-        }
+        *{box-sizing:border-box;margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","SimSun",sans-serif;}
+        body{background:#f0f2f5;padding-bottom:80px;}
+        .header{background:#1a73e8;color:#fff;text-align:center;padding:14px 10px;font-size:17px;font-weight:600;line-height:1.4;}
+        .wrap{padding:12px;}
+        .form-card{background:#fff;border-radius:8px;padding:12px;margin-bottom:12px;}
+        .row{display:flex;gap:8px;margin-bottom:10px;align-items:center;}
+        .row label{width:80px;font-size:14px;color:#333;flex-shrink:0;}
+        .row input,.row select{flex:1;border:1px solid #ddd;border-radius:6px;padding:10px 8px;font-size:15px;}
+        .full-row{margin-bottom:10px;}
+        .full-row label{display:block;font-size:14px;color:#333;margin-bottom:6px;font-weight:500;}
+        .full-row textarea{width:100%;border:1px solid #ddd;border-radius:6px;padding:10px;font-size:15px;min-height:80px;resize:vertical;}
+        .title-row{background:#f5f7fa;padding:8px 10px;border-radius:6px;font-size:14px;font-weight:600;color:#1a73e8;margin-bottom:10px;}
+        .photo-box{margin-top:8px;}
+        .photo-btn{width:100%;padding:12px;background:#e8f0fe;border:1px dashed #1a73e8;border-radius:6px;color:#1a73e8;font-size:15px;text-align:center;}
+        .photo-list{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;}
+        .photo-item{width:80px;height:80px;border-radius:6px;overflow:hidden;position:relative;}
+        .photo-item img{width:100%;height:100%;object-fit:cover;}
+        .photo-del{position:absolute;top:2px;right:2px;width:20px;height:20px;background:rgba(0,0,0,0.6);color:#fff;border-radius:50%;font-size:12px;text-align:center;line-height:20px;}
+        .save-btn-wrap{padding:12px;}
+        #saveLogBtn{width:100%;padding:14px;background:#1a73e8;color:#fff;border:none;border-radius:8px;font-size:16px;font-weight:bold;}
+        .tab-bar{position:fixed;bottom:0;left:0;width:100%;display:flex;background:#fff;border-top:1px solid #ddd;}
+        .tab{flex:1;text-align:center;padding:12px 0;font-size:15px;color:#666;}
+        .tab.active{color:#1a73e8;font-weight:500;}
+        .page{display:none;}
+        .page.active{display:block;}
+        .log-card{background:#fff;border-radius:8px;padding:12px;margin-bottom:10px;}
+        .log-card h4{font-size:15px;color:#333;margin-bottom:8px;border-bottom:1px solid #eee;padding-bottom:6px;}
+        .log-card p{font-size:13px;line-height:1.6;color:#555;margin-bottom:3px;}
+        .log-card p b{color:#333;}
+        .log-photos{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;}
+        .log-photos img{width:70px;height:70px;border-radius:4px;object-fit:cover;}
+        .del-btn{margin-top:8px;color:#e53935;border:none;background:none;font-size:14px;}
+        .docx-btn{margin-top:8px;margin-right:12px;color:#1a73e8;border:none;background:none;font-size:14px;}
+        .add-row{display:flex;gap:6px;margin-top:6px;}
+        .add-row input{flex:1;border:1px solid #ddd;border-radius:6px;padding:8px;font-size:14px;}
+        .add-row button{width:70px;background:#1a73e8;color:#fff;border:none;border-radius:6px;font-size:14px;}
+        .empty-tip{text-align:center;color:#999;padding:40px 0;font-size:14px;}
+        .list-top-bar{display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap;}
+        .list-top-bar button{flex:1;min-width:110px;padding:10px;border:none;border-radius:6px;background:#1a73e8;color:#fff;font-size:14px;}
         #importFileInput{display:none;}
     </style>
 </head>
 <body>
-    <div class="header" id="headerTitle">
-        施工日志
-    </div>
+    <div class="header" id="headerTitle">施工日志</div>
     <div class="wrap">
         <div id="page-form" class="page active">
             <div class="form-card">
-                <div class="row">
-                    <label>选择项目</label>
-                    <select id="project"></select>
-                </div>
-                <div class="add-row">
-                    <input type="text" id="newProjectInput" placeholder="输入新项目名称">
-                    <button id="addProjectBtn">添加</button>
-                </div>
+                <div class="row"><label>选择项目</label><select id="project"></select></div>
+                <div class="add-row"><input type="text" id="newProjectInput" placeholder="输入新项目名称"><button id="addProjectBtn">添加</button></div>
             </div>
             <div class="form-card">
                 <div class="row"><label>项目地址</label><input type="text" id="projectAddr" placeholder="如：临安"></div>
                 <div class="row"><label>建设单位</label><input type="text" id="buildUnit" placeholder="建设单位名称"></div>
-                <div class="row"><label>施工单位</label><input type="text" id="contractor" placeholder="承包/施工单位"></div>
+                <div class="row"><label>施工单位</label><input type="text" id="contractor" placeholder="施工单位"></div>
                 <div class="row"><label>监理单位</label><input type="text" id="supervisor" placeholder="监理单位"></div>
-                <div class="row"><label>合同号</label><input type="text" id="contractNo" placeholder="合同编号"></div>
+                <div class="row"><label>设计单位</label><input type="text" id="designUnit" placeholder="设计单位"></div>
             </div>
             <div class="form-card">
                 <div class="row"><label>施工日期</label><input type="date" id="workDate"></div>
-                <div class="row"><label>天气风向</label><input type="text" id="weather" placeholder="晴 东北风2级"></div>
-                <div class="row"><label>气温</label><input type="text" id="tempInfo" placeholder="19℃"></div>
-                <div class="row"><label>负责人</label><input type="text" id="personCharge" placeholder="负责人"></div>
+                <div class="row"><label>天气</label><input type="text" id="weather" placeholder="晴"></div>
+                <div class="row"><label>风力</label><input type="text" id="wind" placeholder="东北风 2级"></div>
+                <div class="row"><label>温度</label><input type="text" id="tempInfo" placeholder="19°C"></div>
+                <div class="row"><label>负责人</label><input type="text" id="personCharge" placeholder="工程负责人"></div>
                 <div class="row"><label>记录人</label><input type="text" id="recorder" placeholder="记录人"></div>
             </div>
             <div class="form-card">
-                <div class="full-row">
-                    <label>■ 生产记录 - 今日完成</label>
-                    <textarea id="workToday" placeholder="填写今日完成工程量、施工内容..."></textarea>
-                </div>
-                <div class="full-row">
-                    <label>■ 生产记录 - 明日计划</label>
-                    <textarea id="workTomorrow" placeholder="明日施工计划、人员机械安排..."></textarea>
+                <div class="full-row"><label>■ 生产情况记录（今日完成 / 明日计划）</label>
+                    <textarea id="workToday" placeholder="今日完成：&#10;1、..."></textarea>
                 </div>
             </div>
             <div class="form-card">
-                <div class="full-row">
-                    <label>■ 质量与安全</label>
-                    <textarea id="qualitySafe" placeholder="质量检查、安全隐患、管控情况..."></textarea>
+                <div class="full-row"><label>■ 技术质量安全工作记录</label>
+                    <textarea id="qualitySafe" placeholder="质量、安全、技术工作情况..."></textarea>
                 </div>
             </div>
             <div class="form-card">
-                <div class="full-row">
-                    <label>■ 现场照片</label>
+                <div class="full-row"><label>■ 材料、构配件进场记录</label>
+                    <textarea id="materialRecord" placeholder="无 / 进场材料明细..."></textarea>
+                </div>
+            </div>
+            <div class="form-card">
+                <div class="full-row"><label>■ 现场照片（自动按每行3张排入表格）</label>
                     <div class="photo-box">
                         <input type="file" id="photoInput" accept="image/*" style="display:none">
                         <button class="photo-btn" onclick="document.getElementById('photoInput').click()">📷 拍照 / 从相册选择照片</button>
@@ -373,10 +107,7 @@
             <div id="listBox"></div>
         </div>
         <div id="page-set" class="page">
-            <div class="form-card">
-                <div class="title-row">项目管理</div>
-                <div id="projectManageBox"></div>
-            </div>
+            <div class="form-card"><div class="title-row">项目管理</div><div id="projectManageBox"></div></div>
             <div class="form-card">
                 <div class="title-row">项目信息设置（先选项目再编辑）</div>
                 <div class="row"><label>选择项目</label><select id="setProjectSel"></select></div>
@@ -384,182 +115,130 @@
                 <div class="row"><label>建设单位</label><input type="text" id="setBuildUnit" placeholder="该项目建设单位"></div>
                 <div class="row"><label>施工单位</label><input type="text" id="setContractor" placeholder="该项目施工单位"></div>
                 <div class="row"><label>监理单位</label><input type="text" id="setSupervisor" placeholder="该项目监理单位"></div>
-                <div class="row"><label>合同号</label><input type="text" id="setContractNo" placeholder="该项目合同号"></div>
+                <div class="row"><label>设计单位</label><input type="text" id="setDesignUnit" placeholder="该项目设计单位"></div>
                 <button class="add-row" style="width:100%;padding:12px;background:#1a73e8;color:#fff;border:none;border-radius:6px;font-size:15px;margin-top:10px;" onclick="saveProjectInfo()">保存当前项目信息</button>
             </div>
         </div>
     </div>
-    <div class="save-btn-wrap">
-        <button id="saveLogBtn">💾保存本条施工日志</button>
-    </div>
+    <div class="save-btn-wrap"><button id="saveLogBtn">💾保存本条施工日志</button></div>
     <div class="tab-bar">
         <div class="tab" data-page="page-form">记日志</div>
         <div class="tab" data-page="page-list">日志列表</div>
         <div class="tab" data-page="page-set">设置</div>
     </div>
-    <div id="printWrap" style="display:none;"></div>
-<script>
-// 更新顶部标题函数
-function updateHeaderTitle(projName){
-    document.getElementById('headerTitle').innerText = projName + " 施工日志";
-}
 
+<script>
+function updateHeaderTitle(name){document.getElementById('headerTitle').innerText=name+' 施工日志';}
 function getProjectList(){
-    const raw = localStorage.getItem('roadProjectList');
+    const raw=localStorage.getItem('roadProjectList');
     if(raw){
-        const arr = JSON.parse(raw);
-        if(arr.length>0 && typeof arr[0]==='string'){
-            return arr.map(n=>({name:n,projectAddr:'',buildUnit:'',contractor:'',supervisor:'',contractNo:''}));
+        const arr=JSON.parse(raw);
+        if(arr.length>0&&typeof arr[0]==='string'){
+            return arr.map(n=>({name:n,projectAddr:'',buildUnit:'',contractor:'',supervisor:'',designUnit:'',contractNo:''}));
         }
         return arr;
     }
-    return [{name:"默认项目",projectAddr:'',buildUnit:'',contractor:'',supervisor:'',contractNo:''}];
+    return [{name:'默认项目',projectAddr:'',buildUnit:'',contractor:'',supervisor:'',designUnit:'',contractNo:''}];
 }
-function saveProjectList(arr){
-    localStorage.setItem('roadProjectList', JSON.stringify(arr));
-}
-function findProject(name){
-    return getProjectList().find(p=>p.name === name);
-}
+function saveProjectList(arr){localStorage.setItem('roadProjectList',JSON.stringify(arr));}
+function findProject(name){return getProjectList().find(p=>p.name===name);}
 function renderProjectSelect(){
-    const sel = document.getElementById('project');
-    const list = getProjectList();
-    sel.innerHTML = "";
-    list.forEach(p=>{const opt=document.createElement('option');opt.innerText=p.name;opt.value=p.name;sel.appendChild(opt);});
-    bindProjectChange();
-    fillByProject(sel.value);
-    updateHeaderTitle(sel.value);
+    const sel=document.getElementById('project');const list=getProjectList();
+    sel.innerHTML='';list.forEach(p=>{const o=document.createElement('option');o.innerText=p.name;o.value=p.name;sel.appendChild(o);});
+    bindProjectChange();fillByProject(sel.value);updateHeaderTitle(sel.value);
 }
 function renderSetProjectSel(){
-    const sel = document.getElementById('setProjectSel');
-    const list = getProjectList();
-    sel.innerHTML = "";
-    list.forEach(p=>{const opt=document.createElement('option');opt.innerText=p.name;opt.value=p.name;sel.appendChild(opt);});
-    bindSetProjectChange();
-    fillSetFormByProject(sel.value);
+    const sel=document.getElementById('setProjectSel');const list=getProjectList();
+    sel.innerHTML='';list.forEach(p=>{const o=document.createElement('option');o.innerText=p.name;o.value=p.name;sel.appendChild(o);});
+    bindSetProjectChange();fillSetFormByProject(sel.value);
 }
-function bindProjectChange(){
-    const sel=document.getElementById('project');
-    sel.onchange=function(){
-        fillByProject(this.value);
-        updateHeaderTitle(this.value);
-    };
-}
-function fillByProject(projName){
-    const p=findProject(projName);
+function bindProjectChange(){const sel=document.getElementById('project');sel.onchange=function(){fillByProject(this.value);updateHeaderTitle(this.value);};}
+function fillByProject(name){
+    const p=findProject(name);
     if(p){
         document.getElementById('projectAddr').value=p.projectAddr;
         document.getElementById('buildUnit').value=p.buildUnit;
         document.getElementById('contractor').value=p.contractor;
         document.getElementById('supervisor').value=p.supervisor;
-        document.getElementById('contractNo').value=p.contractNo;
+        document.getElementById('designUnit').value=p.designUnit;
     }
 }
-function bindSetProjectChange(){
-    const sel=document.getElementById('setProjectSel');
-    sel.onchange=function(){fillSetFormByProject(this.value);};
-}
-function fillSetFormByProject(projName){
-    const p=findProject(projName);
+function bindSetProjectChange(){const sel=document.getElementById('setProjectSel');sel.onchange=function(){fillSetFormByProject(this.value);};}
+function fillSetFormByProject(name){
+    const p=findProject(name);
     if(p){
         document.getElementById('setProjectAddr').value=p.projectAddr;
         document.getElementById('setBuildUnit').value=p.buildUnit;
         document.getElementById('setContractor').value=p.contractor;
         document.getElementById('setSupervisor').value=p.supervisor;
-        document.getElementById('setContractNo').value=p.contractNo;
+        document.getElementById('setDesignUnit').value=p.designUnit;
     }
 }
 function saveProjectInfo(){
-    const selName=document.getElementById('setProjectSel').value;
-    const arr=getProjectList();
-    const target=arr.find(p=>p.name===selName);
-    if(target){
-        target.projectAddr=document.getElementById('setProjectAddr').value;
-        target.buildUnit=document.getElementById('setBuildUnit').value;
-        target.contractor=document.getElementById('setContractor').value;
-        target.supervisor=document.getElementById('setSupervisor').value;
-        target.contractNo=document.getElementById('setContractNo').value;
+    const name=document.getElementById('setProjectSel').value;const arr=getProjectList();
+    const t=arr.find(p=>p.name===name);
+    if(t){
+        t.projectAddr=document.getElementById('setProjectAddr').value;
+        t.buildUnit=document.getElementById('setBuildUnit').value;
+        t.contractor=document.getElementById('setContractor').value;
+        t.supervisor=document.getElementById('setSupervisor').value;
+        t.designUnit=document.getElementById('setDesignUnit').value;
     }
-    saveProjectList(arr);
-    renderProjectSelect();
-    alert("✅该项目信息已保存！切换项目会自动带出");
+    saveProjectList(arr);renderProjectSelect();alert('✅该项目信息已保存！切换项目会自动带出');
 }
 document.getElementById('addProjectBtn').onclick=function(){
-    const val=document.getElementById('newProjectInput').value.trim();
-    if(!val){alert("项目名称不能为空");return;}
+    const v=document.getElementById('newProjectInput').value.trim();
+    if(!v){alert('项目名称不能为空');return;}
     const arr=getProjectList();
-    if(arr.some(p=>p.name===val)){alert("该项目已存在");return;}
-    arr.push({name:val,projectAddr:'',buildUnit:'',contractor:'',supervisor:'',contractNo:''});
-    saveProjectList(arr);
-    renderProjectSelect();
-    renderSetProjectSel();
-    document.getElementById('newProjectInput').value="";
+    if(arr.some(p=>p.name===v)){alert('该项目已存在');return;}
+    arr.push({name:v,projectAddr:'',buildUnit:'',contractor:'',supervisor:'',designUnit:'',contractNo:''});
+    saveProjectList(arr);renderProjectSelect();renderSetProjectSel();document.getElementById('newProjectInput').value='';
 };
 
 let photos=[];
 document.getElementById('photoInput').onchange=function(e){
-    const file=e.target.files[0];
-    if(!file)return;
+    const file=e.target.files[0];if(!file)return;
     const reader=new FileReader();
     reader.onload=function(ev){
         const img=new Image();
         img.onload=function(){
             const canvas=document.createElement('canvas');
-            const maxW=1200;
-            const scale=Math.min(1,maxW/img.width);
-            canvas.width=img.width*scale;
-            canvas.height=img.height*scale;
+            const maxW=900;const scale=Math.min(1,maxW/img.width);
+            canvas.width=img.width*scale;canvas.height=img.height*scale;
             canvas.getContext('2d').drawImage(img,0,0,canvas.width,canvas.height);
-            const compressed=canvas.toDataURL('image/jpeg',0.7);
-            photos.push(compressed);
-            renderPhotos();
+            const compressed=canvas.toDataURL('image/jpeg',0.55);
+            photos.push(compressed);renderPhotos();
         };
         img.src=ev.target.result;
     };
-    reader.readAsDataURL(file);
-    e.target.value="";
+    reader.readAsDataURL(file);e.target.value='';
 };
 function renderPhotos(){
-    const box=document.getElementById('photoList');
-    box.innerHTML="";
+    const box=document.getElementById('photoList');box.innerHTML='';
     photos.forEach((p,idx)=>{
-        const div=document.createElement('div');
-        div.className='photo-item';
+        const div=document.createElement('div');div.className='photo-item';
         div.innerHTML=`<img src="${p}"><div class="photo-del" onclick="delPhoto(${idx})">×</div>`;
         box.appendChild(div);
     });
 }
-function delPhoto(idx){
-    photos.splice(idx,1);
-    renderPhotos();
-}
+function delPhoto(idx){photos.splice(idx,1);renderPhotos();}
 
 const today=new Date();
-const y=today.getFullYear();
-const m=String(today.getMonth()+1).padStart(2,'0');
-const d=String(today.getDate()).padStart(2,'0');
-document.getElementById('workDate').value=`${y}-${m}-${d}`;
+document.getElementById('workDate').value=today.toISOString().slice(0,10);
 
 const tabs=document.querySelectorAll('.tab');
 tabs.forEach(tab=>{
     tab.onclick=()=>{
-        tabs.forEach(t=>t.classList.remove('active'));
-        tab.classList.add('active');
-        const targetId=tab.dataset.page;
+        tabs.forEach(t=>t.classList.remove('active'));tab.classList.add('active');
+        const id=tab.dataset.page;
         document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
-        document.getElementById(targetId).classList.add('active');
-        if(targetId==='page-list')renderList();
-        if(targetId==='page-set'){renderProjectManage();renderSetProjectSel();}
+        document.getElementById(id).classList.add('active');
+        if(id==='page-list')renderList();
+        if(id==='page-set'){renderProjectManage();renderSetProjectSel();}
     };
 });
-
-function getLogs(){
-    const raw=localStorage.getItem('roadLog');
-    return raw?JSON.parse(raw):[];
-}
-function saveLogs(arr){
-    localStorage.setItem('roadLog',JSON.stringify(arr));
-}
+function getLogs(){const raw=localStorage.getItem('roadLog');return raw?JSON.parse(raw):[];}
+function saveLogs(arr){localStorage.setItem('roadLog',JSON.stringify(arr));}
 
 document.getElementById('saveLogBtn').onclick=function(){
     const workDate=document.getElementById('workDate').value;
@@ -571,202 +250,276 @@ document.getElementById('saveLogBtn').onclick=function(){
         buildUnit:document.getElementById('buildUnit').value,
         contractor:document.getElementById('contractor').value,
         supervisor:document.getElementById('supervisor').value,
-        contractNo:document.getElementById('contractNo').value,
+        designUnit:document.getElementById('designUnit').value,
         workDate:workDate,
         weather:document.getElementById('weather').value,
+        wind:document.getElementById('wind').value,
         tempInfo:document.getElementById('tempInfo').value,
         personCharge:document.getElementById('personCharge').value,
         recorder:document.getElementById('recorder').value,
         workToday:document.getElementById('workToday').value,
-        workTomorrow:document.getElementById('workTomorrow').value,
         qualitySafe:document.getElementById('qualitySafe').value,
+        materialRecord:document.getElementById('materialRecord').value,
         photos:[...photos]
     };
-    const logs=getLogs();
-    logs.unshift(log);
-    saveLogs(logs);
+    const logs=getLogs();logs.unshift(log);saveLogs(logs);
     alert('✅日志保存成功！');
     photos=[];renderPhotos();
     document.getElementById('workToday').value='';
-    document.getElementById('workTomorrow').value='';
     document.getElementById('qualitySafe').value='';
+    document.getElementById('materialRecord').value='';
     document.getElementById('weather').value='';
+    document.getElementById('wind').value='';
     document.getElementById('tempInfo').value='';
     document.getElementById('personCharge').value='';
     document.getElementById('recorder').value='';
 };
 
-function printItem(logItem){
-    let imgHtml="";
-    if(logItem.photos&&logItem.photos.length>0){
-        imgHtml+=`<div class="img-wrap">`;
-        logItem.photos.forEach(p=>{imgHtml+=`<div class="img-item"><img src="${p}"></div>`;});
-        imgHtml+=`</div>`;
+// ======== 生成与上传的Word模板相同排版的 .docx（图片自动每行3格填入） ========
+async function exportRealDocx(logItem){
+    if(typeof window.ImageModule==='undefined'){
+        alert('docx组件未加载成功，请联网并刷新页面（建议在电脑Chrome导出）');return;
     }
-    const printHtml=`
-<div style="width:100%;padding:0 4mm;">
-    <h2 align="center" style="font-size:22pt;margin-bottom:4pt;">${logItem.project} 施工日志</h2>
-    <p align="center" style="font-size:13pt;color:#444;margin-bottom:10pt;">${logItem.workDate}　${logItem.weather||''}　${logItem.tempInfo||''}</p>
-    <hr style="border:0.5pt solid #333;margin:8pt 0;">
-    <p style="font-size:12pt;line-height:1.5;"><b>项目名称：</b>${logItem.project||""}</p>
-    <p style="font-size:12pt;line-height:1.5;"><b>项目地址：</b>${logItem.projectAddr||""}</p>
-    <p style="font-size:12pt;line-height:1.5;"><b>建设单位：</b>${logItem.buildUnit||""}</p>
-    <p style="font-size:12pt;line-height:1.5;"><b>施工单位：</b>${logItem.contractor||""}</p>
-    <hr style="border:0.3pt solid #999;margin:8pt 0;">
-    <h3 style="font-size:14pt;margin:8pt 0;">■ 生产记录</h3>
-    <p style="font-size:12pt;line-height:1.5;"><b>今日完成：</b></p>
-    <p style="font-size:12pt;line-height:1.5;white-space:pre-line;">${logItem.workToday||""}</p>
-    <p style="font-size:12pt;line-height:1.5;margin-top:6pt;"><b>明日计划：</b></p>
-    <p style="font-size:12pt;line-height:1.5;white-space:pre-line;">${logItem.workTomorrow||""}</p>
-    <h3 style="font-size:14pt;margin:12pt 0 8pt 0;">■ 质量与安全</h3>
-    <p style="font-size:12pt;line-height:1.5;white-space:pre-line;">${logItem.qualitySafe||""}</p>
-    <h3 style="font-size:14pt;margin:12pt 0 8pt 0;">■ 现场照片</h3>
-    ${imgHtml}
-    <hr style="border:0.3pt solid #999;margin:12pt 0;">
-    <div style="display:flex;justify-content:space-between;font-size:12pt;margin-top:8pt;">
-        <p><b>负责人：</b>${logItem.personCharge||""}</p>
-        <p><b>记录人：</b>${logItem.recorder||""}</p>
-    </div>
-</div>`;
-    const wrapDom=document.getElementById('printWrap');
-    wrapDom.innerHTML=printHtml;
-    setTimeout(()=>{window.print();wrapDom.innerHTML="";},100);
-}
+    alert('正在生成docx，图片会打包进Word，照片越多越慢，请稍候……');
+    const imageModule=new window.ImageModule({
+        getImage:function(tagValue){
+            return fetch(tagValue).then(r=>r.arrayBuffer());
+        },
+        getSize:function(){return {width:190,height:140};}
+    });
 
-function exportRealDocx(logItem){
-    alert("正在导出纯文字doc（图片请使用打印→另存PDF获取）");
-    const html=`
-<html xmlns:o="urn:schemas-microsoft-com:office:office">
-<head>
-<meta charset="utf‑8">
-<title>${logItem.project}施工日志‑${logItem.workDate}</title>
-<style>
-@page {size:A4; margin:2cm;}
-body{font-family:SimSun,宋体;}
-p{font-size:12pt;line-height:1.6;}
-h2{text-align:center;font-size:18pt;}
-h3{font-size:14pt;margin-top:12pt;}
-hr{border:0.5pt solid #333;}
-</style>
-</head>
-<body>
-<h2>${logItem.project} 施工日志</h2>
-<p align="center">${logItem.workDate}　${logItem.weather||""}　${logItem.tempInfo||""}</p>
-<hr>
-<p><b>项目名称：</b>${logItem.project||""}</p>
-<p><b>项目地址：</b>${logItem.projectAddr||""}</p>
-<p><b>建设单位：</b>${logItem.buildUnit||""}</p>
-<p><b>施工单位：</b>${logItem.contractor||""}</p>
-<p><b>监理单位：</b>${logItem.supervisor||""}</p>
-<p><b>合同号：</b>${logItem.contractNo||""}</p>
-<hr>
-<h3>■生产记录</h3>
-<p><b>今日完成：</b></p>
-<p style="white-space:pre-line;">${logItem.workToday||""}</p>
-<p><b>明日计划：</b></p>
-<p style="white-space:pre-line;">${logItem.workTomorrow||""}</p>
-<h3>■质量与安全</h3>
-<p style="white-space:pre-line;">${logItem.qualitySafe||""}</p>
-<hr>
-<p><b>负责人：</b>${logItem.personCharge||""}　记录人：${logItem.recorder||""}</p>
-<p>说明：照片请打印另存PDF获取</p>
-</body></html>`;
-    const blob=new Blob([html],{type:'text/html;charset=utf‑8'});
-    const url=URL.createObjectURL(blob);
+    // 图片每3张一行分组，自动填入表格格子
+    const rows=[];const arr=logItem.photos||[];
+    for(let i=0;i<arr.length;i+=3){
+        rows.push({p1:arr[i]||null,p2:arr[i+1]||null,p3:arr[i+2]||null});
+    }
+    if(rows.length===0)rows.push({p1:null,p2:null,p3:null});
+
+    // 计算星期
+    const wd=['日','一','二','三','四','五','六'];
+    let weekday='';
+    try{
+        const dd=new Date(logItem.workDate);
+        weekday='星期'+wd[dd.getDay()];
+    }catch(e){}
+
+    // 生产记录合并今日+明日
+    const prod = (logItem.workToday||'').trim();
+    const plan = ''; // 模板无明日计划独立栏，可并入生产记录
+
+    // docx模板XML（严格按上传模板排版）
+    const templateContent = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<pkg:package xmlns:pkg="http://schemas.openxmlformats.org/package/2006">
+<pkg:types xmlns:pkg="http://schemas.openxmlformats.org/package/2006">
+<pkg:default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+<pkg:default Extension="xml" ContentType="application/xml"/>
+<pkg:override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>
+</pkg:types>
+<pkg:part name="/word/document.xml" contentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml">
+<pkg:xmlData>
+<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+<w:body>
+<w:p><w:pPr><w:jc w:val="center"/></w:pPr><w:r><w:rPr><w:b/><w:sz w:val="40"/></w:rPr><w:t>施　工　日　志</w:t></w:r></w:p>
+<w:p><w:r><w:t></w:t></w:r></w:p>
+
+<w:tbl>
+<w:tblPr><w:tblW w:w="0" w:type="auto"/>
+<w:tblBorders>
+<w:top w:val="single" w:sz="6"/><w:left w:val="single" w:sz="6"/><w:bottom w:val="single" w:sz="6"/><w:right w:val="single" w:sz="6"/>
+<w:insideH w:val="single" w:sz="6"/><w:insideV w:val="single" w:sz="6"/>
+</w:tblBorders></w:tblPr>
+<w:tr>
+<w:tc><w:tcPr><w:tcW w:w="1500"/></w:tcPr><w:p><w:r><w:t>项目名称</w:t></w:r></w:p></w:tc>
+<w:tc><w:tcPr><w:tcW w:w="2500"/></w:tcPr><w:p><w:r><w:t>{project}</w:t></w:r></w:p></w:tc>
+<w:tc><w:tcPr><w:tcW w:w="1500"/></w:tcPr><w:p><w:r><w:t>项目地址</w:t></w:r></w:p></w:tc>
+<w:tc><w:tcPr><w:tcW w:w="2500"/></w:tcPr><w:p><w:r><w:t>{projectAddr}</w:t></w:r></w:p></w:tc>
+</w:tr>
+<w:tr>
+<w:tc><w:tcPr><w:tcW w:w="1500"/></w:tcPr><w:p><w:r><w:t>建设单位</w:t></w:r></w:p></w:tc>
+<w:tc><w:tcPr><w:tcW w:w="2500"/></w:tcPr><w:p><w:r><w:t>{buildUnit}</w:t></w:r></w:p></w:tc>
+<w:tc><w:tcPr><w:tcW w:w="1500"/></w:tcPr><w:p><w:r><w:t>监理单位</w:t></w:r></w:p></w:tc>
+<w:tc><w:tcPr><w:tcW w:w="2500"/></w:tcPr><w:p><w:r><w:t>{supervisor}</w:t></w:r></w:p></w:tc>
+</w:tr>
+<w:tr>
+<w:tc><w:tcPr><w:tcW w:w="1500"/></w:tcPr><w:p><w:r><w:t>施工单位</w:t></w:r></w:p></w:tc>
+<w:tc><w:tcPr><w:tcW w:w="2500"/></w:tcPr><w:p><w:r><w:t>{contractor}</w:t></w:r></w:p></w:tc>
+<w:tc><w:tcPr><w:tcW w:w="1500"/></w:tcPr><w:p><w:r><w:t>设计单位</w:t></w:r></w:p></w:tc>
+<w:tc><w:tcPr><w:tcW w:w="2500"/></w:tcPr><w:p><w:r><w:t>{designUnit}</w:t></w:r></w:p></w:tc>
+</w:tr>
+<w:tr>
+<w:tc><w:tcPr><w:tcW w:w="8000"/><w:gridSpan w:val="4"/></w:tcPr><w:p><w:r><w:t>日　　期：{workDate}　{weekday}</w:t></w:r></w:p></w:tc>
+</w:tr>
+<w:tr>
+<w:tc><w:tcPr><w:tcW w:w="1500"/></w:tcPr><w:p><w:r><w:t>天气</w:t></w:r></w:p></w:tc>
+<w:tc><w:tcPr><w:tcW w:w="2500"/></w:tcPr><w:p><w:r><w:t>{weather}</w:t></w:r></w:p></w:tc>
+<w:tc><w:tcPr><w:tcW w:w="1500"/></w:tcPr><w:p><w:r><w:t>风力</w:t></w:r></w:p></w:tc>
+<w:tc><w:tcPr><w:tcW w:w="2500"/></w:tcPr><w:p><w:r><w:t>{wind}</w:t></w:r></w:p></w:tc>
+</w:tr>
+<w:tr>
+<w:tc><w:tcPr><w:tcW w:w="1500"/></w:tcPr><w:p><w:r><w:t>温度</w:t></w:r></w:p></w:tc>
+<w:tc><w:tcPr><w:tcW w:w="2500"/></w:tcPr><w:p><w:r><w:t>{tempInfo}</w:t></w:r></w:p></w:tc>
+<w:tc><w:tcPr><w:tcW w:w="1500"/></w:tcPr><w:p><w:r><w:t>备注</w:t></w:r></w:p></w:tc>
+<w:tc><w:tcPr><w:tcW w:w="2500"/></w:tcPr><w:p><w:r><w:t>{remark}</w:t></w:r></w:p></w:tc>
+</w:tr>
+<w:tr>
+<w:tc><w:tcPr><w:tcW w:w="8000"/><w:gridSpan w:val="4"/><w:shd w:fill="D9D9D9"/></w:tcPr><w:p><w:r><w:b><w:t>生产情况记录</w:t></w:b></w:r></w:p></w:tc>
+</w:tr>
+<w:tr>
+<w:tc><w:tcPr><w:tcW w:w="8000"/><w:gridSpan w:val="4"/></w:tcPr><w:p><w:r><w:t>{workToday}</w:t></w:r></w:p></w:tc>
+</w:tr>
+<w:tr>
+<w:tc><w:tcPr><w:tcW w:w="8000"/><w:gridSpan w:val="4"/><w:shd w:fill="D9D9D9"/></w:tcPr><w:p><w:r><w:b><w:t>技术质量安全工作记录</w:t></w:b></w:r></w:p></w:tc>
+</w:tr>
+<w:tr>
+<w:tc><w:tcPr><w:tcW w:w="8000"/><w:gridSpan w:val="4"/></w:tcPr><w:p><w:r><w:t>{qualitySafe}</w:t></w:r></w:p></w:tc>
+</w:tr>
+<w:tr>
+<w:tc><w:tcPr><w:tcW w:w="8000"/><w:gridSpan w:val="4"/><w:shd w:fill="D9D9D9"/></w:tcPr><w:p><w:r><w:b><w:t>材料、构配件进场记录</w:t></w:b></w:r></w:p></w:tc>
+</w:tr>
+<w:tr>
+<w:tc><w:tcPr><w:tcW w:w="8000"/><w:gridSpan w:val="4"/></w:tcPr><w:p><w:r><w:t>{materialRecord}</w:t></w:r></w:p></w:tc>
+</w:tr>
+</w:tbl>
+<w:p><w:r><w:t></w:t></w:r></w:p>
+
+<w:tbl>
+<w:tblPr><w:tblW w:w="0" w:type="auto"/>
+<w:tblBorders>
+<w:top w:val="single" w:sz="6"/><w:left w:val="single" w:sz="6"/><w:bottom w:val="single" w:sz="6"/><w:right w:val="single" w:sz="6"/>
+<w:insideH w:val="single" w:sz="6"/><w:insideV w:val="single" w:sz="6"/>
+</w:tblBorders></w:tblPr>
+<w:tr>
+<w:tc><w:tcPr><w:tcW w:w="8000"/><w:gridSpan w:val="3"/><w:shd w:fill="D9D9D9"/></w:tcPr><w:p><w:r><w:b><w:t>现场照片</w:t></w:b></w:r></w:p></w:tc>
+</w:tr>
+{#rows}
+<w:tr>
+<w:tc><w:tcPr><w:tcW w:w="2666"/></w:tcPr><w:p><w:r>{%p1}</w:r></w:p></w:tc>
+<w:tc><w:tcPr><w:tcW w:w="2666"/></w:tcPr><w:p><w:r>{%p2}</w:r></w:p></w:tc>
+<w:tc><w:tcPr><w:tcW w:w="2666"/></w:tcPr><w:p><w:r>{%p3}</w:r></w:p></w:tc>
+</w:tr>
+{/rows}
+</w:tbl>
+<w:p><w:r><w:t></w:t></w:r></w:p>
+
+<w:tbl>
+<w:tblPr><w:tblW w:w="0" w:type="auto"/>
+<w:tblBorders>
+<w:top w:val="single" w:sz="6"/><w:left w:val="single" w:sz="6"/><w:bottom w:val="single" w:sz="6"/><w:right w:val="single" w:sz="6"/>
+</w:tblBorders></w:tblPr>
+<w:tr>
+<w:tc><w:tcPr><w:tcW w:w="4000"/></w:tcPr><w:p><w:r><w:t>工程负责人：{personCharge}</w:t></w:r></w:p></w:tc>
+<w:tc><w:tcPr><w:tcW w:w="4000"/></w:tcPr><w:p><w:r><w:t>记录人：{recorder}</w:t></w:r></w:p></w:tc>
+</w:tr>
+</w:tbl>
+</w:body>
+</w:document>
+</pkg:xmlData>
+</pkg:part>
+<pkg:part name="/_rels/.rels" contentType="application/vnd.openxmlformats-package.relationships+xml">
+<pkg:xmlData>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>
+</Relationships>
+</pkg:xmlData>
+</pkg:part>
+</pkg:package>`;
+
+    const zip=new PizZip(templateContent);
+    const doc=new window.docxtemplater(zip,{
+        modules:[imageModule],
+        nullGetter:function(){return '';}
+    });
+    doc.render({
+        project:logItem.project||'',
+        projectAddr:logItem.projectAddr||'',
+        buildUnit:logItem.buildUnit||'',
+        supervisor:logItem.supervisor||'',
+        contractor:logItem.contractor||'',
+        designUnit:logItem.designUnit||'',
+        workDate:logItem.workDate||'',
+        weekday:weekday,
+        weather:logItem.weather||'',
+        wind:logItem.wind||'',
+        tempInfo:logItem.tempInfo||'',
+        remark:logItem.remark||'',
+        workToday:logItem.workToday||'',
+        qualitySafe:logItem.qualitySafe||'',
+        materialRecord:logItem.materialRecord||'',
+        personCharge:logItem.personCharge||'',
+        recorder:logItem.recorder||'',
+        rows:rows
+    });
+    const out=doc.getZip().generate({type:'blob',mimeType:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'});
     const a=document.createElement('a');
-    a.href=url;
-    a.download=`${logItem.project}_施工日志_${logItem.workDate}.doc`;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    URL.revokeObjectURL(url);
+    a.href=URL.createObjectURL(out);
+    a.download=(logItem.project||'施工日志')+'_'+logItem.workDate+'.docx';
+    document.body.appendChild(a);a.click();a.remove();
+    URL.revokeObjectURL(a.href);
 }
 
 function exportAllBackup(){
     const allData={projectList:getProjectList(),logs:getLogs()};
-    const blob=new Blob([JSON.stringify(allData,null,2)],{type:"application/json"});
+    const blob=new Blob([JSON.stringify(allData,null,2)],{type:'application/json'});
     const url=URL.createObjectURL(blob);
     const a=document.createElement('a');
-    a.href=url;
-    a.download=`施工日志全部备份_${new Date().toLocaleDateString()}.json`;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    URL.revokeObjectURL(url);
-    alert("全部备份已下载！妥善保存，清除浏览器缓存后可以恢复数据");
+    a.href=url;a.download=`施工日志全部备份_${new Date().toLocaleDateString()}.json`;
+    document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);
+    alert('全部备份已下载！妥善保存，清除浏览器缓存后可以恢复数据');
 }
-
 document.getElementById('importFileInput').onchange=function(e){
-    const f=e.target.files[0];
-    if(!f)return;
+    const f=e.target.files[0];if(!f)return;
     const reader=new FileReader();
     reader.onload=function(ev){
         try{
             const data=JSON.parse(ev.target.result);
             if(data.projectList)saveProjectList(data.projectList);
             if(data.logs)saveLogs(data.logs);
-            renderProjectSelect();
-            renderSetProjectSel();
-            renderProjectManage();
-            alert("✅导入备份成功！");
-        }catch(err){alert("文件格式错误，不是备份json");}
+            renderProjectSelect();renderSetProjectSel();renderProjectManage();
+            alert('✅导入备份成功！');
+        }catch(err){alert('文件格式错误，不是备份json');}
     };
-    reader.readAsText(f);
-    e.target.value="";
+    reader.readAsText(f);e.target.value='';
 };
-
 function renderList(){
-    const box=document.getElementById('listBox');
-    const logs=getLogs();
+    const box=document.getElementById('listBox');const logs=getLogs();
     if(logs.length===0){box.innerHTML='<div class="empty-tip">暂无施工日志记录</div>';return;}
     let html='';
     logs.forEach(item=>{
         html+=`
         <div class="log-card">
             <h4>${item.workDate} 施工日志｜${item.project}</h4>
-            <p><b>项目地址：</b>${item.projectAddr || '-'}</p>
-            <p><b>建设单位：</b>${item.buildUnit || '-'}</p>
-            <p><b>施工单位：</b>${item.contractor || '-'}</p>
-            <p><b>天气：</b>${item.weather || '-'}　气温：${item.tempInfo||'-'}</p>
-            <p><b>【今日完成】</b>${item.workToday || '-'}</p>
-            <p><b>【明日计划】</b>${item.workTomorrow || '-'}</p>
-            <p><b>【质量安全】</b>${item.qualitySafe || '-'}</p>
+            <p><b>项目地址：</b>${item.projectAddr||'-'}</p>
+            <p><b>建设单位：</b>${item.buildUnit||'-'}</p>
+            <p><b>施工单位：</b>${item.contractor||'-'}</p>
+            <p><b>天气：</b>${item.weather||'-'}　风力：${item.wind||'-'}　温度：${item.tempInfo||'-'}</p>
+            <p><b>【生产记录】</b>${item.workToday||'-'}</p>
+            <p><b>【技术质量安全】</b>${item.qualitySafe||'-'}</p>
+            <p><b>【材料进场】</b>${item.materialRecord||'-'}</p>
             ${item.photos&&item.photos.length>0?`<div class="log-photos">${item.photos.map(p=>`<img src="${p}">`).join('')}</div>`:''}
             <p><b>负责人：</b>${item.personCharge||'-'}　记录人：${item.recorder||'-'}</p>
-            <button class="print-btn" data-id="${item.id}">🖨打印A4(获取PDF图片)</button>
-            <button class="docx-btn" data-id="${item.id}">📄导出纯文字doc</button>
+            <button class="docx-btn" data-id="${item.id}">📄导出Word(docx)</button>
             <button class="del-btn" data-id="${item.id}">删除本条</button>
         </div>`;
     });
     box.innerHTML=html;
-    document.querySelectorAll('.print-btn').forEach(btn=>{
-        btn.onclick=()=>{
-            const id=Number(btn.dataset.id);
-            const oneLog=getLogs().find(x=>x.id===id);
-            if(oneLog)printItem(oneLog);
-        };
-    });
     document.querySelectorAll('.docx-btn').forEach(btn=>{
-        btn.onclick=()=>{
+        btn.onclick=async()=>{
             const id=Number(btn.dataset.id);
-            const oneLog=getLogs().find(x=>x.id===id);
-            if(oneLog)exportRealDocx(oneLog);
+            const one=getLogs().find(x=>x.id===id);
+            if(one)await exportRealDocx(one);
         };
     });
     document.querySelectorAll('.del-btn').forEach(btn=>{
         btn.onclick=()=>{
             if(!confirm('确定删除这条日志吗？'))return;
-            const delId=Number(btn.dataset.id);
-            let arr=getLogs().filter(x=>x.id!==delId);
-            saveLogs(arr);
-            renderList();
+            const id=Number(btn.dataset.id);
+            let arr=getLogs().filter(x=>x.id!==id);
+            saveLogs(arr);renderList();
         };
     });
 }
-
 function renderProjectManage(){
-    const box=document.getElementById('projectManageBox');
-    const list=getProjectList();
+    const box=document.getElementById('projectManageBox');const list=getProjectList();
     let html='';
     list.forEach(p=>{
         html+=`
@@ -779,17 +532,13 @@ function renderProjectManage(){
     document.querySelectorAll('.del-btn').forEach(btn=>{
         btn.onclick=()=>{
             const pName=btn.dataset.pro;
-            if(pName==="默认项目"){alert("默认项目不能删除");return;}
+            if(pName==='默认项目'){alert('默认项目不能删除');return;}
             if(!confirm(`确定删除项目「${pName}」吗？`))return;
             let arr=getProjectList().filter(x=>x.name!==pName);
-            saveProjectList(arr);
-            renderProjectSelect();
-            renderSetProjectSel();
-            renderProjectManage();
+            saveProjectList(arr);renderProjectSelect();renderSetProjectSel();renderProjectManage();
         };
     });
 }
-
 renderProjectSelect();
 document.querySelector('[data-page="page-form"]').classList.add('active');
 document.querySelector('.tab[data-page="page-form"]').classList.add('active');
