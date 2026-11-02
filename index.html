@@ -222,8 +222,8 @@
             flex-wrap:wrap;
         }
         .btn-row button{
-            flex:1 1 0;
-            min-width:96px;
+            flex:1 1 calc(50% - 4px);
+            min-width:0;
             padding:9px 6px;
             border-radius:6px;
             font-size:13px;
@@ -295,6 +295,32 @@
         .help-card ul{padding-left:18px;}
         .help-card li{margin-bottom:4px;}
         .help-card detail{display:block;}
+
+        /* ============ 编辑状态提示条 ============ */
+        .edit-banner{
+            display:none;
+            align-items:center;
+            justify-content:space-between;
+            gap:10px;
+            background:#fff8e1;
+            border:1px solid #ffe082;
+            color:#8d6e63;
+            border-radius:8px;
+            padding:10px 12px;
+            margin-bottom:12px;
+            font-size:13px;
+            line-height:1.4;
+        }
+        .edit-banner button{
+            flex-shrink:0;
+            border:1px solid #ffcc80;
+            background:#fff;
+            color:#ef6c00;
+            border-radius:6px;
+            padding:6px 10px;
+            font-size:13px;
+        }
+        .log-title{cursor:pointer;}
         #importFileInput{display:none;}
 
         /* ============ 右上角提示 ============ */
@@ -486,6 +512,10 @@ table.doc-table td.head-left{text-align:left;}
     <div class="wrap">
         <!-- ================= 记日志 ================= -->
         <div id="page-form" class="page active">
+            <div id="editBanner" class="edit-banner">
+                <span id="editBannerText">正在编辑</span>
+                <button onclick="cancelEdit()">取消编辑</button>
+            </div>
             <div class="form-card">
                 <div class="row">
                     <label>选择项目</label>
@@ -586,12 +616,14 @@ table.doc-table td.head-left{text-align:left;}
             <div class="help-card">
                 <h3>📖 使用说明</h3>
                 <ul>
-                    <li>所有数据只保存在本机浏览器（localStorage），不上传服务器；换手机请用「全部日志备份」导出 json 再导入。</li>
+                    <li>所有数据只保存在本机浏览器，不上传服务器。<b>文字存 localStorage，照片单独存 IndexedDB（容量大，不占 5MB 文字空间）</b>；换手机请用「全部日志备份」导出 json 再导入。</li>
+                    <li>日志列表里点日志标题或「✏️ 编辑」可以修改已保存的日志，改完点页面底部的「更新本条施工日志」。</li>
                     <li>导出 Word 为纯前端现场生成（不依赖任何网络或第三方库），表格严格按施工日志模板：信息表 + 生产记录 + 技术质量安全 + 材料进场 + 现场照片（3 张一行）+ 签字栏。</li>
                     <li>照片在拍照时已压缩（长边 1000px），导出时直接写入文档，不再二次解码，手机内存占用小。</li>
                     <li>导出耗时：生成过程为纯本地计算，电脑实测 0 张 0.4 毫秒、6 张 4.5 毫秒、12 张 8 毫秒；手机约为其 10～20 倍（0.1～0.3 秒），主要时间花在保存文件上。</li>
                     <li>如需纸质打印或 PDF，点日志卡片上的「打印/存PDF」，A4 排版与 Word 一致。</li>
                 </ul>
+                <div id="storageInfo" class="hint" style="margin-top:8px;">正在读取本机存储占用…</div>
             </div>
         </div>
     </div>
@@ -732,17 +764,25 @@ var DocxGen = (function () {
         return out;
     }
 
-    /* ---------- 照片解析：base64 → 二进制 + 尺寸（不解码图片，省内存） ---------- */
-    function parsePhoto(dataUrl) {
-        if (!dataUrl || typeof dataUrl !== 'string' || dataUrl.indexOf('data:') !== 0) return null;
-        var comma = dataUrl.indexOf(',');
-        if (comma < 0) return null;
-        var meta = dataUrl.slice(5, comma);
-        var mime = (meta.split(';')[0] || 'image/jpeg').toLowerCase();
-        var bin;
-        try { bin = atob(dataUrl.slice(comma + 1)); } catch (e) { return null; }
-        var bytes = new Uint8Array(bin.length);
-        for (var i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    /* ---------- 照片解析：base64 或二进制 + 尺寸（不解码图片，省内存） ---------- */
+    function parsePhoto(p) {
+        var bytes = null, mime = 'image/jpeg';
+        if (typeof p === 'string') {
+            if (p.indexOf('data:') !== 0) return null;
+            var comma = p.indexOf(',');
+            if (comma < 0) return null;
+            mime = (p.slice(5, comma).split(';')[0] || 'image/jpeg').toLowerCase();
+            var bin;
+            try { bin = atob(p.slice(comma + 1)); } catch (e) { return null; }
+            bytes = new Uint8Array(bin.length);
+            for (var i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+        } else if (p && typeof p === 'object' && typeof p.byteLength === 'number') {
+            bytes = (p instanceof Uint8Array) ? p : new Uint8Array(p.buffer || p);
+        } else {
+            return null;
+        }
+        if (!bytes || !bytes.length) return null;
+        if (bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4E) mime = 'image/png';
         var size = imageSize(bytes);
         var ext = mime.indexOf('png') >= 0 ? 'png' : 'jpg';
         return {
@@ -1055,27 +1095,213 @@ var DocxGen = (function () {
 /* DOCX-GEN-END */
 
 /* ==================================================================
-   二、业务逻辑（与原来完全一致：localStorage、项目管理、备份导入）
+   二、业务逻辑
+   文字类数据仍存 localStorage（体积小），照片改存 IndexedDB（容量大，
+   iOS 一般可用数百 MB 至 GB 级），彻底解决 5MB 上限导致的“存储空间不足”
    ================================================================== */
 var LS_PROJECT = 'roadProjectList';
 var LS_LOG = 'roadLog';
+var DB_NAME = 'roadLogDB';
+var DB_STORE = 'photos';
+var PHOTO_MAX_SIDE = 1000;
+var PHOTO_QUALITY = 0.75;
+
+var photos = [];        /* 表单照片：[{id:...}] 已入库 / [{data:'data:image/...'}] 待入库 */
+var editingId = null;   /* 正在编辑的日志 id，null 表示新建 */
+var urlCache = {};      /* 照片 id -> objectURL 缓存 */
+var refMap = {};        /* 列表渲染时的临时引用表 */
+var refSeq = 0;
+
+function $(id) { return document.getElementById(id); }
+function nowMs() { return (window.performance && performance.now) ? performance.now() : Date.now(); }
+
+function updateHeaderTitle(projName) {
+    var el = $('headerTitle');
+    if (el) el.innerText = (projName || '') + ' 施工日志';
+}
+
+function escHtml(s) {
+    return String(s == null ? '' : s)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+}
 
 function toast(msg, ms) {
-    var el = document.getElementById('toast');
+    var el = $('toast');
     el.textContent = msg;
     el.classList.add('show');
     clearTimeout(toast._t);
-    toast._t = setTimeout(function () { el.classList.remove('show'); }, ms || 2200);
+    toast._t = setTimeout(function () { el.classList.remove('show'); }, ms || 2400);
 }
 
-function updateHeaderTitle(projName) {
-    document.getElementById('headerTitle').innerText = projName + " 施工日志";
+function showBusy(text) {
+    $('busyText').textContent = text || '处理中…';
+    $('busy').classList.add('show');
+}
+function hideBusy() {
+    $('busy').classList.remove('show');
 }
 
+/* ---------- IndexedDB：照片仓库 ---------- */
+var DB = (function () {
+    var opening = null;
+    function open() {
+        if (opening) return opening;
+        opening = new Promise(function (resolve, reject) {
+            if (!window.indexedDB) { reject(new Error('浏览器不支持本地大容量存储')); return; }
+            var req = indexedDB.open(DB_NAME, 1);
+            req.onupgradeneeded = function () {
+                var db = req.result;
+                if (!db.objectStoreNames.contains(DB_STORE)) db.createObjectStore(DB_STORE);
+            };
+            req.onsuccess = function () {
+                var db = req.result;
+                /* 兼容异常情况：数据库存在但缺少照片表时，升一个版本补建 */
+                if (db.objectStoreNames.contains(DB_STORE)) { resolve(db); return; }
+                var nextVersion = db.version + 1;
+                db.close();
+                var req2 = indexedDB.open(DB_NAME, nextVersion);
+                req2.onupgradeneeded = function () {
+                    if (!req2.result.objectStoreNames.contains(DB_STORE)) req2.result.createObjectStore(DB_STORE);
+                };
+                req2.onsuccess = function () { resolve(req2.result); };
+                req2.onerror = function () { reject(req2.error || new Error('本地存储初始化失败')); };
+            };
+            req.onerror = function () { reject(req.error || new Error('本地存储打开失败')); };
+        });
+        return opening;
+    }
+    function run(mode, act) {
+        return open().then(function (db) {
+            return new Promise(function (resolve, reject) {
+                var t = db.transaction(DB_STORE, mode);
+                var req = act(t.objectStore(DB_STORE));
+                t.oncomplete = function () { resolve(req ? req.result : undefined); };
+                t.onerror = function () { reject(t.error || new Error('存储写入失败')); };
+                t.onabort = function () { reject(t.error || new Error('存储写入被中断')); };
+            });
+        });
+    }
+    return {
+        put: function (id, blob) { return run('readwrite', function (s) { return s.put(blob, id); }); },
+        get: function (id) {
+            return run('readonly', function (s) { return s.get(id); }).then(function (v) { return v || null; });
+        },
+        del: function (id) { return run('readwrite', function (s) { return s.delete(id); }); },
+        keys: function () { return run('readonly', function (s) { return s.getAllKeys(); }); }
+    };
+})();
+
+function newPhotoId() {
+    return 'p' + Date.now().toString(36) + Math.random().toString(36).slice(2, 9);
+}
+
+/* 统一照片引用：老数据是 base64 字符串，新数据是 {id} */
+function toRef(p) {
+    if (!p) return null;
+    if (typeof p === 'string') return p.indexOf('data:') === 0 ? { data: p } : null;
+    if (p.id) return { id: p.id };
+    if (p.data) return { data: p.data };
+    return null;
+}
+
+function blobToU8(blob) {
+    return new Promise(function (resolve, reject) {
+        if (blob.arrayBuffer) {
+            blob.arrayBuffer().then(function (ab) { resolve(new Uint8Array(ab)); }, reject);
+            return;
+        }
+        var fr = new FileReader();
+        fr.onload = function () { resolve(new Uint8Array(fr.result)); };
+        fr.onerror = function () { reject(fr.error); };
+        fr.readAsArrayBuffer(blob);
+    });
+}
+
+function u8ToBase64(u8) {
+    var CHUNK = 0x8000, out = '';
+    for (var i = 0; i < u8.length; i += CHUNK) {
+        out += String.fromCharCode.apply(null, u8.subarray(i, i + CHUNK));
+    }
+    return btoa(out);
+}
+
+function srcOf(ref) {
+    ref = toRef(ref);
+    if (!ref) return Promise.resolve('');
+    if (ref.data) return Promise.resolve(ref.data);
+    if (urlCache[ref.id]) return Promise.resolve(urlCache[ref.id]);
+    return DB.get(ref.id).then(function (blob) {
+        if (!blob) return '';
+        var url = URL.createObjectURL(blob);
+        urlCache[ref.id] = url;
+        return url;
+    }).catch(function () { return ''; });
+}
+
+function refBytes(ref) {
+    ref = toRef(ref);
+    if (!ref) return Promise.resolve(null);
+    if (ref.data) {
+        var parsed = DocxGen.parsePhoto(ref.data);
+        return Promise.resolve(parsed ? parsed.bytes : null);
+    }
+    return DB.get(ref.id).then(function (blob) {
+        return blob ? blobToU8(blob) : null;
+    }).catch(function () { return null; });
+}
+
+function refDataUrl(ref) {
+    ref = toRef(ref);
+    if (!ref) return Promise.resolve('');
+    if (ref.data) return Promise.resolve(ref.data);
+    return DB.get(ref.id).then(function (blob) {
+        if (!blob) return '';
+        var mime = blob.type || 'image/jpeg';
+        return blobToU8(blob).then(function (u8) {
+            return 'data:' + mime + ';base64,' + u8ToBase64(u8);
+        });
+    }).catch(function () { return ''; });
+}
+
+/* 把表单里待存的照片写入 IndexedDB，返回 [{id}]；IndexedDB 不可用时退回内嵌 */
+function persistPhotos(list) {
+    var out = [];
+    return list.reduce(function (p, raw) {
+        return p.then(function () {
+            var ref = toRef(raw);
+            if (!ref) return;
+            if (ref.id) { out.push({ id: ref.id }); return; }
+            var parsed = DocxGen.parsePhoto(ref.data);
+            if (!parsed) return;
+            var id = newPhotoId();
+            return DB.put(id, new Blob([parsed.bytes], { type: parsed.mime })).then(function () {
+                out.push({ id: id });
+            }).catch(function () {
+                out.push({ data: ref.data });
+            });
+        });
+    }, Promise.resolve()).then(function () { return out; });
+}
+
+function dropPhotos(refs) {
+    var jobs = [];
+    (refs || []).forEach(function (raw) {
+        var ref = toRef(raw);
+        if (!ref || !ref.id) return;
+        if (urlCache[ref.id]) {
+            try { URL.revokeObjectURL(urlCache[ref.id]); } catch (e) { }
+            delete urlCache[ref.id];
+        }
+        jobs.push(DB.del(ref.id).catch(function () { }));
+    });
+    return Promise.all(jobs);
+}
+
+/* ---------- 项目管理（逻辑与原来一致） ---------- */
 function blankProject(name) {
     return {
-        name: name,
-        projectAddr: '', buildUnit: '', contractor: '',
+        name: name, projectAddr: '', buildUnit: '', contractor: '',
         supervisor: '', designUnit: '', contractNo: ''
     };
 }
@@ -1085,9 +1311,7 @@ function getProjectList() {
     if (raw) {
         try {
             var arr = JSON.parse(raw);
-            if (arr.length > 0 && typeof arr[0] === 'string') {
-                return arr.map(blankProject);
-            }
+            if (arr.length > 0 && typeof arr[0] === 'string') return arr.map(blankProject);
             return arr.map(function (p) {
                 return {
                     name: p.name,
@@ -1111,7 +1335,7 @@ function findProject(name) {
 }
 
 function renderProjectSelect() {
-    var sel = document.getElementById('project');
+    var sel = $('project');
     var list = getProjectList();
     var keep = sel.value;
     sel.innerHTML = "";
@@ -1126,7 +1350,7 @@ function renderProjectSelect() {
     updateHeaderTitle(sel.value || '');
 }
 function renderSetProjectSel() {
-    var sel = document.getElementById('setProjectSel');
+    var sel = $('setProjectSel');
     var list = getProjectList();
     var keep = sel.value;
     sel.innerHTML = "";
@@ -1140,55 +1364,53 @@ function renderSetProjectSel() {
     fillSetFormByProject(sel.value);
 }
 
-document.getElementById('project').onchange = function () {
+$('project').onchange = function () {
     fillByProject(this.value);
     updateHeaderTitle(this.value);
 };
-document.getElementById('setProjectSel').onchange = function () {
+$('setProjectSel').onchange = function () {
     fillSetFormByProject(this.value);
 };
 
 function fillByProject(projName) {
     var p = findProject(projName);
-    if (p) {
-        document.getElementById('projectAddr').value = p.projectAddr || '';
-        document.getElementById('buildUnit').value = p.buildUnit || '';
-        document.getElementById('contractor').value = p.contractor || '';
-        document.getElementById('supervisor').value = p.supervisor || '';
-        document.getElementById('designUnit').value = p.designUnit || '';
-        document.getElementById('contractNo').value = p.contractNo || '';
-    }
+    if (!p) return;
+    $('projectAddr').value = p.projectAddr || '';
+    $('buildUnit').value = p.buildUnit || '';
+    $('contractor').value = p.contractor || '';
+    $('supervisor').value = p.supervisor || '';
+    $('designUnit').value = p.designUnit || '';
+    $('contractNo').value = p.contractNo || '';
 }
 function fillSetFormByProject(projName) {
     var p = findProject(projName);
-    if (p) {
-        document.getElementById('setProjectAddr').value = p.projectAddr || '';
-        document.getElementById('setBuildUnit').value = p.buildUnit || '';
-        document.getElementById('setContractor').value = p.contractor || '';
-        document.getElementById('setSupervisor').value = p.supervisor || '';
-        document.getElementById('setDesignUnit').value = p.designUnit || '';
-        document.getElementById('setContractNo').value = p.contractNo || '';
-    }
+    if (!p) return;
+    $('setProjectAddr').value = p.projectAddr || '';
+    $('setBuildUnit').value = p.buildUnit || '';
+    $('setContractor').value = p.contractor || '';
+    $('setSupervisor').value = p.supervisor || '';
+    $('setDesignUnit').value = p.designUnit || '';
+    $('setContractNo').value = p.contractNo || '';
 }
 function saveProjectInfo() {
-    var selName = document.getElementById('setProjectSel').value;
+    var selName = $('setProjectSel').value;
     var arr = getProjectList();
     var target = arr.filter(function (p) { return p.name === selName; })[0];
     if (target) {
-        target.projectAddr = document.getElementById('setProjectAddr').value;
-        target.buildUnit = document.getElementById('setBuildUnit').value;
-        target.contractor = document.getElementById('setContractor').value;
-        target.supervisor = document.getElementById('setSupervisor').value;
-        target.designUnit = document.getElementById('setDesignUnit').value;
-        target.contractNo = document.getElementById('setContractNo').value;
+        target.projectAddr = $('setProjectAddr').value;
+        target.buildUnit = $('setBuildUnit').value;
+        target.contractor = $('setContractor').value;
+        target.supervisor = $('setSupervisor').value;
+        target.designUnit = $('setDesignUnit').value;
+        target.contractNo = $('setContractNo').value;
     }
     saveProjectList(arr);
     renderProjectSelect();
     toast("✅ 该项目信息已保存，切换项目会自动带出");
 }
 
-document.getElementById('addProjectBtn').onclick = function () {
-    var val = document.getElementById('newProjectInput').value.trim();
+$('addProjectBtn').onclick = function () {
+    var val = $('newProjectInput').value.trim();
     if (!val) { alert("项目名称不能为空"); return; }
     var arr = getProjectList();
     if (arr.some(function (p) { return p.name === val; })) { alert("该项目已存在"); return; }
@@ -1196,26 +1418,23 @@ document.getElementById('addProjectBtn').onclick = function () {
     saveProjectList(arr);
     renderProjectSelect();
     renderSetProjectSel();
-    document.getElementById('project').value = val;
-    document.getElementById('newProjectInput').value = "";
+    $('project').value = val;
+    $('newProjectInput').value = "";
     updateHeaderTitle(val);
 };
 
-/* ---------- 照片：拍照后立即压缩，减小 localStorage 与内存压力 ---------- */
-var photos = [];
-var PHOTO_MAX_SIDE = 1000;
-var PHOTO_QUALITY = 0.75;
-
-document.getElementById('photoInput').onchange = function (e) {
+/* ---------- 照片：拍照 → 压缩 → 进表单 ---------- */
+$('photoInput').onchange = function (e) {
     var files = Array.prototype.slice.call(e.target.files || []);
+    e.target.value = "";
     if (!files.length) return;
     var i = 0;
-    function next() {
-        if (i >= files.length) { e.target.value = ""; return; }
-        var file = files[i++];
-        compressFile(file, function () { next(); });
-    }
-    next();
+    showBusy('正在处理照片 1/' + files.length + '…');
+    (function next() {
+        if (i >= files.length) { hideBusy(); return; }
+        $('busyText').textContent = '正在处理照片 ' + (i + 1) + '/' + files.length + '…';
+        compressFile(files[i++], function () { next(); });
+    })();
 };
 
 function compressFile(file, done) {
@@ -1231,7 +1450,7 @@ function compressFile(file, done) {
                 canvas.width = w;
                 canvas.height = h;
                 canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-                photos.push(canvas.toDataURL('image/jpeg', PHOTO_QUALITY));
+                photos.push({ data: canvas.toDataURL('image/jpeg', PHOTO_QUALITY) });
                 canvas.width = canvas.height = 0;
                 renderPhotos();
             } catch (err) {
@@ -1247,48 +1466,40 @@ function compressFile(file, done) {
 }
 
 function renderPhotos() {
-    var box = document.getElementById('photoList');
+    var box = $('photoList');
+    var refs = [];
+    photos.forEach(function (p) {
+        var r = toRef(p);
+        if (r) refs.push(r);
+    });
+    photos = refs;
     box.innerHTML = "";
-    photos.forEach(function (p, idx) {
+    refs.forEach(function (ref, idx) {
         var div = document.createElement('div');
         div.className = 'photo-item';
-        div.innerHTML = '<img src="' + p + '"><button class="photo-del" data-idx="' + idx + '">×</button>';
+        var img = document.createElement('img');
+        img.alt = '';
+        div.appendChild(img);
+        var del = document.createElement('button');
+        del.className = 'photo-del';
+        del.textContent = '×';
+        del.onclick = function () { delPhoto(idx); };
+        div.appendChild(del);
         box.appendChild(div);
-    });
-    Array.prototype.forEach.call(box.querySelectorAll('.photo-del'), function (btn) {
-        btn.onclick = function () { delPhoto(Number(btn.dataset.idx)); };
+        if (ref.data) {
+            img.src = ref.data;
+        } else {
+            srcOf(ref).then(function (src) { if (src) img.src = src; });
+        }
     });
 }
+
 function delPhoto(idx) {
     photos.splice(idx, 1);
     renderPhotos();
 }
 
-/* ---------- 日期默认值 ---------- */
-(function () {
-    var today = new Date();
-    var y = today.getFullYear();
-    var m = String(today.getMonth() + 1).padStart(2, '0');
-    var d = String(today.getDate()).padStart(2, '0');
-    document.getElementById('workDate').value = y + '-' + m + '-' + d;
-})();
-
-/* ---------- 标签切换 ---------- */
-var tabs = document.querySelectorAll('.tab');
-Array.prototype.forEach.call(tabs, function (tab) {
-    tab.onclick = function () {
-        Array.prototype.forEach.call(tabs, function (t) { t.classList.remove('active'); });
-        tab.classList.add('active');
-        var targetId = tab.dataset.page;
-        Array.prototype.forEach.call(document.querySelectorAll('.page'), function (p) { p.classList.remove('active'); });
-        document.getElementById(targetId).classList.add('active');
-        if (targetId === 'page-list') renderList();
-        if (targetId === 'page-set') { renderProjectManage(); renderSetProjectSel(); }
-        window.scrollTo(0, 0);
-    };
-});
-
-/* ---------- 日志存取 ---------- */
+/* ---------- 日志读写 ---------- */
 function getLogs() {
     var raw = localStorage.getItem(LS_LOG);
     if (!raw) return [];
@@ -1299,52 +1510,11 @@ function saveLogs(arr) {
         localStorage.setItem(LS_LOG, JSON.stringify(arr));
         return true;
     } catch (e) {
-        alert('本机存储空间不足，请先导出备份并删除旧日志后再保存。');
+        alert('本机文字存储空间不足，请先「全部日志备份」并删除部分旧日志。\n（照片已单独存在大容量存储中，不占这部分空间）');
         return false;
     }
 }
 
-document.getElementById('saveLogBtn').onclick = function () {
-    var workDate = document.getElementById('workDate').value;
-    if (!workDate) { alert('施工日期不能为空！'); return; }
-
-    var log = {
-        id: Date.now(),
-        project: document.getElementById('project').value,
-        projectAddr: document.getElementById('projectAddr').value,
-        buildUnit: document.getElementById('buildUnit').value,
-        contractor: document.getElementById('contractor').value,
-        supervisor: document.getElementById('supervisor').value,
-        designUnit: document.getElementById('designUnit').value,
-        contractNo: document.getElementById('contractNo').value,
-        workDate: workDate,
-        weather: document.getElementById('weather').value,
-        wind: document.getElementById('wind').value,
-        tempInfo: document.getElementById('tempInfo').value,
-        remark: document.getElementById('remark').value,
-        personCharge: document.getElementById('personCharge').value,
-        recorder: document.getElementById('recorder').value,
-        workToday: document.getElementById('workToday').value,
-        workTomorrow: document.getElementById('workTomorrow').value,
-        qualitySafe: document.getElementById('qualitySafe').value,
-        materials: document.getElementById('materials').value,
-        photos: photos.slice()
-    };
-
-    var logs = getLogs();
-    logs.unshift(log);
-    if (!saveLogs(logs)) return;
-
-    toast('✅ 日志保存成功');
-    photos = [];
-    renderPhotos();
-    ['workToday', 'workTomorrow', 'qualitySafe', 'materials', 'weather', 'wind',
-        'tempInfo', 'remark', 'personCharge', 'recorder'].forEach(function (id) {
-            document.getElementById(id).value = '';
-        });
-};
-
-/* ---------- 旧数据兼容：天气/风力合并填写的老记录 ---------- */
 function logWind(log) {
     if (log.wind) return log.wind;
     var m = /^(.*?)[\s　]+(\S*风.*)$/.exec(log.weather || '');
@@ -1356,16 +1526,168 @@ function logWeather(log) {
     return m ? m[1] : (log.weather || '');
 }
 
-/* ==================================================================
-   三、导出 Word（docx）
-   ================================================================== */
+function fieldVal(id) { var el = $(id); return el ? el.value : ''; }
+
+function collectForm() {
+    return {
+        project: fieldVal('project'),
+        projectAddr: fieldVal('projectAddr'),
+        buildUnit: fieldVal('buildUnit'),
+        contractor: fieldVal('contractor'),
+        supervisor: fieldVal('supervisor'),
+        designUnit: fieldVal('designUnit'),
+        contractNo: fieldVal('contractNo'),
+        workDate: fieldVal('workDate'),
+        weather: fieldVal('weather'),
+        wind: fieldVal('wind'),
+        tempInfo: fieldVal('tempInfo'),
+        remark: fieldVal('remark'),
+        personCharge: fieldVal('personCharge'),
+        recorder: fieldVal('recorder'),
+        workToday: fieldVal('workToday'),
+        workTomorrow: fieldVal('workTomorrow'),
+        qualitySafe: fieldVal('qualitySafe'),
+        materials: fieldVal('materials'),
+        photos: photos.slice()
+    };
+}
+
+function fillFormFromLog(log) {
+    $('project').value = log.project && findProject(log.project) ? log.project : $('project').value;
+    $('projectAddr').value = log.projectAddr || '';
+    $('buildUnit').value = log.buildUnit || '';
+    $('contractor').value = log.contractor || '';
+    $('supervisor').value = log.supervisor || '';
+    $('designUnit').value = log.designUnit || '';
+    $('contractNo').value = log.contractNo || '';
+    $('workDate').value = log.workDate || '';
+    $('weather').value = logWeather(log);
+    $('wind').value = logWind(log);
+    $('tempInfo').value = log.tempInfo || '';
+    $('remark').value = log.remark || '';
+    $('personCharge').value = log.personCharge || '';
+    $('recorder').value = log.recorder || '';
+    $('workToday').value = log.workToday || '';
+    $('workTomorrow').value = log.workTomorrow || '';
+    $('qualitySafe').value = log.qualitySafe || '';
+    $('materials').value = log.materials || '';
+    photos = (log.photos || []).map(toRef).filter(Boolean);
+    renderPhotos();
+    updateHeaderTitle(log.project || $('project').value);
+}
+
+function clearFormText() {
+    ['workToday', 'workTomorrow', 'qualitySafe', 'materials', 'weather', 'wind',
+        'tempInfo', 'remark', 'personCharge', 'recorder'].forEach(function (id) {
+            $(id).value = '';
+        });
+    photos = [];
+    renderPhotos();
+}
+
+/* ---------- 新建 / 编辑 ---------- */
+function startEdit(id) {
+    var log = getLogs().filter(function (x) { return x.id === id; })[0];
+    if (!log) { toast('日志不存在，可能已被删除'); return; }
+    editingId = id;
+    fillFormFromLog(log);
+    $('editBanner').style.display = 'flex';
+    $('editBannerText').textContent = '正在编辑 ' + (log.workDate || '') + ' 的施工日志';
+    $('saveLogBtn').textContent = '💾 更新本条施工日志';
+    switchTab('page-form');
+    window.scrollTo(0, 0);
+    toast('已载入，修改后点「更新本条施工日志」');
+}
+
+function cancelEdit() {
+    editingId = null;
+    $('editBanner').style.display = 'none';
+    $('saveLogBtn').textContent = '💾 保存本条施工日志';
+    clearFormText();
+    renderProjectSelect();
+    toast('已取消编辑');
+}
+
+function exitEditMode() {
+    editingId = null;
+    $('editBanner').style.display = 'none';
+    $('saveLogBtn').textContent = '💾 保存本条施工日志';
+    clearFormText();
+    renderProjectSelect();
+}
+
+$('saveLogBtn').onclick = function () {
+    var workDate = fieldVal('workDate');
+    if (!workDate) { alert('施工日期不能为空！'); return; }
+
+    var editing = editingId;
+    showBusy(editing ? '正在更新日志…' : '正在保存日志…');
+    var snapshot = photos.slice();
+
+    persistPhotos(snapshot).then(function (refs) {
+        var log = collectForm();
+        log.photos = refs;
+
+        var logs = getLogs();
+        var idx = -1;
+        for (var i = 0; i < logs.length; i++) {
+            if (logs[i].id === editing) { idx = i; break; }
+        }
+
+        if (editing && idx >= 0) {
+            log.id = editing;
+            log.createdAt = logs[idx].createdAt || logs[idx].id;
+            log.updatedAt = Date.now();
+            logs[idx] = log;
+        } else {
+            log.id = Date.now();
+            log.createdAt = log.id;
+            logs.unshift(log);
+        }
+
+        if (!saveLogs(logs)) { hideBusy(); return; }
+        hideBusy();
+
+        if (editing && idx >= 0) {
+            exitEditMode();
+            switchTab('page-list');
+            renderList();
+            toast('✅ 已更新这条日志');
+        } else {
+            toast('✅ 日志保存成功');
+            clearFormText();
+        }
+    }).catch(function (e) {
+        hideBusy();
+        alert('保存失败：' + (e && e.message ? e.message : e));
+    });
+};
+
+/* ---------- 标签切换 ---------- */
+function switchTab(pageId) {
+    Array.prototype.forEach.call(document.querySelectorAll('.tab'), function (t) {
+        t.classList.toggle('active', t.dataset.page === pageId);
+    });
+    Array.prototype.forEach.call(document.querySelectorAll('.page'), function (p) {
+        p.classList.toggle('active', p.id === pageId);
+    });
+    if (pageId === 'page-list') renderList();
+    if (pageId === 'page-set') { renderProjectManage(); renderSetProjectSel(); updateStorageInfo(); }
+}
+Array.prototype.forEach.call(document.querySelectorAll('.tab'), function (tab) {
+    tab.onclick = function () { switchTab(tab.dataset.page); window.scrollTo(0, 0); };
+});
+
+/* ---------- 导出 Word ---------- */
 var pending = null;
 
 function exportDocx(logItem) {
     showBusy('正在生成 Word 文档…');
+    var t0 = nowMs();
     setTimeout(function () {
-        var t0 = (window.performance && performance.now) ? performance.now() : Date.now();
-        try {
+        var refs = (logItem.photos || []).map(toRef).filter(Boolean);
+        Promise.all(refs.map(refBytes)).then(function (list) {
+            var bytes = list.filter(Boolean);
             var src = {
                 project: logItem.project,
                 projectAddr: logItem.projectAddr,
@@ -1385,37 +1707,29 @@ function exportDocx(logItem) {
                 workTomorrow: logItem.workTomorrow,
                 qualitySafe: logItem.qualitySafe,
                 materials: logItem.materials,
-                photos: logItem.photos || []
+                photos: bytes
             };
             var result = DocxGen.build(src);
             var blob = new Blob([result.bytes], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
-            var cost = ((window.performance && performance.now) ? performance.now() : Date.now()) - t0;
+            var cost = nowMs() - t0;
             pending = { blob: blob, name: result.name };
             hideBusy();
-            showExportModal(result.name, blob.size, src.photos.length, cost);
-        } catch (err) {
+            showExportModal(result.name, blob.size, bytes.length, cost);
+        }).catch(function (err) {
             hideBusy();
             alert('生成 Word 失败：' + (err && err.message ? err.message : err));
-        }
-    }, 50);
-}
-
-function showBusy(text) {
-    document.getElementById('busyText').textContent = text || '处理中…';
-    document.getElementById('busy').classList.add('show');
-}
-function hideBusy() {
-    document.getElementById('busy').classList.remove('show');
+        });
+    }, 60);
 }
 
 function showExportModal(name, size, count, ms) {
-    document.getElementById('modalInfo').textContent = name;
-    document.getElementById('modalHint').innerHTML =
-        '大小 ' + (size / 1024).toFixed(0) + ' KB　·　照片 ' + count + ' 张　·　生成耗时 ' + (ms < 1 ? '小于 1' : ms.toFixed(0)) + ' 毫秒<br>' +
+    $('modalInfo').textContent = name;
+    $('modalHint').innerHTML =
+        '大小 ' + (size / 1024).toFixed(0) + ' KB　·　照片 ' + count + ' 张　·　生成耗时 ' +
+        (ms < 1 ? '小于 1' : ms.toFixed(0)) + ' 毫秒<br>' +
         'iPhone 请用「分享 / 存储到文件」把文档存到「文件」App 或直接发给监理。';
-    var shareBtn = document.getElementById('modalShare');
-    shareBtn.style.display = (navigator.canShare && navigator.share) ? '' : 'none';
-    document.getElementById('modal').classList.add('show');
+    $('modalShare').style.display = (navigator.canShare && navigator.share) ? '' : 'none';
+    $('modal').classList.add('show');
 }
 
 function downloadFile(blob, name) {
@@ -1430,150 +1744,232 @@ function downloadFile(blob, name) {
     setTimeout(function () {
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
-    }, 1500);
+    }, 2000);
 }
 
-document.getElementById('modalDownload').onclick = function () {
+$('modalDownload').onclick = function () {
     if (!pending) return;
     downloadFile(pending.blob, pending.name);
     toast('已开始下载：' + pending.name, 3000);
 };
-document.getElementById('modalShare').onclick = function () {
+$('modalShare').onclick = function () {
     if (!pending) return;
-    var file = new File([pending.blob], pending.name, {
-        type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-    });
-    if (navigator.canShare && navigator.canShare({ files: [file] })) {
-        navigator.share({ files: [file], title: pending.name }).catch(function (err) {
-            if (err && err.name !== 'AbortError') toast('分享失败，请改用「下载 / 保存」');
+    try {
+        var file = new File([pending.blob], pending.name, {
+            type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
         });
-    } else {
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+            navigator.share({ files: [file], title: pending.name }).catch(function (err) {
+                if (err && err.name !== 'AbortError') toast('分享失败，请改用「下载 / 保存」');
+            });
+        } else {
+            downloadFile(pending.blob, pending.name);
+        }
+    } catch (e) {
         downloadFile(pending.blob, pending.name);
     }
 };
-document.getElementById('modalClose').onclick = function () {
-    document.getElementById('modal').classList.remove('show');
-};
-document.getElementById('modal').onclick = function (e) {
-    if (e.target === this) this.classList.remove('show');
-};
+$('modalClose').onclick = function () { $('modal').classList.remove('show'); };
+$('modal').onclick = function (e) { if (e.target === this) this.classList.remove('show'); };
 
-/* ==================================================================
-   四、A4 打印 / 存 PDF（排版与 Word 完全一致，照片 3 列）
-   ================================================================== */
+/* ---------- A4 打印 / 存 PDF ---------- */
 function printItem(logItem) {
-    var photosArr = logItem.photos || [];
-    var photoRows = Math.max(2, Math.ceil(photosArr.length / 3));
+    showBusy('正在准备打印…');
+    var refs = (logItem.photos || []).map(toRef).filter(Boolean);
+    Promise.all(refs.map(srcOf)).then(function (srcs) {
+        hideBusy();
+        var photoRows = Math.max(2, Math.ceil(refs.length / 3));
 
-    function escHtml(s) {
-        return String(s == null ? '' : s)
-            .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;');
-    }
-    function v(v, dft) {
-        var s = (v == null ? '' : String(v)).trim();
-        return s === '' ? (dft || '-') : s;
-    }
-
-    var remark = (logItem.remark || '').trim();
-    if ((logItem.contractNo || '').trim()) {
-        remark = '合同号：' + logItem.contractNo + (remark ? '　' + remark : '');
-    }
-    if (!remark) remark = '-';
-
-    var d = DocxGen.cnDate(logItem.workDate);
-    var wk = DocxGen.weekName(logItem.workDate);
-
-    var photoHtml = '';
-    for (var r = 0; r < photoRows; r++) {
-        photoHtml += '<tr>';
-        for (var c = 0; c < 3; c++) {
-            var ph = photosArr[r * 3 + c];
-            photoHtml += '<td class="ph">' + (ph ? '<img src="' + ph + '">' : '') + '</td>';
+        function v(x, dft) {
+            var s = (x == null ? '' : String(x)).trim();
+            return s === '' ? (dft || '-') : s;
         }
-        photoHtml += '</tr>';
-    }
 
-    var html =
-        '<h1 class="doc-title">施 工 日 志</h1>' +
-        '<table class="doc-table">' +
-        '<colgroup><col style="width:27.2mm"><col style="width:57.8mm"><col style="width:27.2mm"><col style="width:57.8mm"></colgroup>' +
-        '<tr><td class="head">项目名称</td><td>' + escHtml(v(logItem.project)) + '</td><td class="head">项目地址</td><td>' + escHtml(v(logItem.projectAddr)) + '</td></tr>' +
-        '<tr><td class="head">建设单位</td><td>' + escHtml(v(logItem.buildUnit)) + '</td><td class="head">监理单位</td><td>' + escHtml(v(logItem.supervisor)) + '</td></tr>' +
-        '<tr><td class="head">施工单位</td><td>' + escHtml(v(logItem.contractor)) + '</td><td class="head">设计单位</td><td>' + escHtml(v(logItem.designUnit)) + '</td></tr>' +
-        '<tr><td colspan="4">日　　期：' + escHtml(d || '-') + (wk ? '　' + wk : '') + '</td></tr>' +
-        '<tr><td class="head">天气</td><td>' + escHtml(v(logWeather(logItem))) + '</td><td class="head">风力</td><td>' + escHtml(v(logWind(logItem))) + '</td></tr>' +
-        '<tr><td class="head">温度</td><td>' + escHtml(v(logItem.tempInfo)) + '</td><td class="head">备注</td><td>' + escHtml(remark) + '</td></tr>' +
-        '<tr><td colspan="4" class="head head-left">生产情况记录</td></tr>' +
-        '<tr><td colspan="4" class="body" style="height:32mm">' + escHtml('今日完成：' + v(logItem.workToday, '无') + '\n\n明日计划：' + v(logItem.workTomorrow, '无')) + '</td></tr>' +
-        '<tr><td colspan="4" class="head head-left">技术质量安全工作记录</td></tr>' +
-        '<tr><td colspan="4" class="body" style="height:23mm">' + escHtml(v(logItem.qualitySafe, '无')) + '</td></tr>' +
-        '<tr><td colspan="4" class="head head-left">材料、构配件进场记录</td></tr>' +
-        '<tr><td colspan="4" class="body" style="height:14mm">' + escHtml(v(logItem.materials, '无')) + '</td></tr>' +
-        '</table>' +
-        '<div style="height:2mm"></div>' +
-        '<table class="doc-table photo-table">' +
-        '<colgroup><col style="width:56.6mm"><col style="width:56.6mm"><col style="width:56.8mm"></colgroup>' +
-        '<thead><tr><td class="head head-left" colspan="3">现场照片</td></tr></thead>' +
-        '<tbody>' + photoHtml + '</tbody>' +
-        '</table>' +
-        '<div style="height:2mm"></div>' +
-        '<table class="sign-table">' +
-        '<tr><td>工程负责人：' + escHtml((logItem.personCharge || '').trim()) + '</td>' +
-        '<td style="text-align:right">记录人：' + escHtml((logItem.recorder || '').trim()) + '</td></tr>' +
-        '</table>';
+        var remark = (logItem.remark || '').trim();
+        if ((logItem.contractNo || '').trim()) {
+            remark = '合同号：' + logItem.contractNo + (remark ? '　' + remark : '');
+        }
+        if (!remark) remark = '-';
 
-    var wrapDom = document.getElementById('printWrap');
-    wrapDom.innerHTML = html;
-    var restore = function () { wrapDom.innerHTML = ''; window.onafterprint = null; };
-    window.onafterprint = restore;
-    setTimeout(function () { window.print(); }, 120);
-    setTimeout(function () { if (wrapDom.innerHTML) restore(); }, 60000);
+        var d = DocxGen.cnDate(logItem.workDate);
+        var wk = DocxGen.weekName(logItem.workDate);
+
+        var photoHtml = '';
+        for (var r = 0; r < photoRows; r++) {
+            photoHtml += '<tr>';
+            for (var c = 0; c < 3; c++) {
+                var ph = srcs[r * 3 + c];
+                photoHtml += '<td class="ph">' + (ph ? '<img src="' + ph + '">' : '') + '</td>';
+            }
+            photoHtml += '</tr>';
+        }
+
+        var html =
+            '<h1 class="doc-title">施 工 日 志</h1>' +
+            '<table class="doc-table">' +
+            '<colgroup><col style="width:27.2mm"><col style="width:57.8mm"><col style="width:27.2mm"><col style="width:57.8mm"></colgroup>' +
+            '<tr><td class="head">项目名称</td><td>' + escHtml(v(logItem.project)) + '</td><td class="head">项目地址</td><td>' + escHtml(v(logItem.projectAddr)) + '</td></tr>' +
+            '<tr><td class="head">建设单位</td><td>' + escHtml(v(logItem.buildUnit)) + '</td><td class="head">监理单位</td><td>' + escHtml(v(logItem.supervisor)) + '</td></tr>' +
+            '<tr><td class="head">施工单位</td><td>' + escHtml(v(logItem.contractor)) + '</td><td class="head">设计单位</td><td>' + escHtml(v(logItem.designUnit)) + '</td></tr>' +
+            '<tr><td colspan="4">日　　期：' + escHtml(d || '-') + (wk ? '　' + wk : '') + '</td></tr>' +
+            '<tr><td class="head">天气</td><td>' + escHtml(v(logWeather(logItem))) + '</td><td class="head">风力</td><td>' + escHtml(v(logWind(logItem))) + '</td></tr>' +
+            '<tr><td class="head">温度</td><td>' + escHtml(v(logItem.tempInfo)) + '</td><td class="head">备注</td><td>' + escHtml(remark) + '</td></tr>' +
+            '<tr><td colspan="4" class="head head-left">生产情况记录</td></tr>' +
+            '<tr><td colspan="4" class="body" style="height:32mm">' + escHtml('今日完成：' + v(logItem.workToday, '无') + '\n\n明日计划：' + v(logItem.workTomorrow, '无')) + '</td></tr>' +
+            '<tr><td colspan="4" class="head head-left">技术质量安全工作记录</td></tr>' +
+            '<tr><td colspan="4" class="body" style="height:23mm">' + escHtml(v(logItem.qualitySafe, '无')) + '</td></tr>' +
+            '<tr><td colspan="4" class="head head-left">材料、构配件进场记录</td></tr>' +
+            '<tr><td colspan="4" class="body" style="height:14mm">' + escHtml(v(logItem.materials, '无')) + '</td></tr>' +
+            '</table>' +
+            '<div style="height:2mm"></div>' +
+            '<table class="doc-table photo-table">' +
+            '<colgroup><col style="width:56.6mm"><col style="width:56.6mm"><col style="width:56.8mm"></colgroup>' +
+            '<thead><tr><td class="head head-left" colspan="3">现场照片</td></tr></thead>' +
+            '<tbody>' + photoHtml + '</tbody>' +
+            '</table>' +
+            '<div style="height:2mm"></div>' +
+            '<table class="sign-table">' +
+            '<tr><td>工程负责人：' + escHtml((logItem.personCharge || '').trim()) + '</td>' +
+            '<td style="text-align:right">记录人：' + escHtml((logItem.recorder || '').trim()) + '</td></tr>' +
+            '</table>';
+
+        var wrapDom = $('printWrap');
+        wrapDom.innerHTML = html;
+        wrapDom.style.display = 'block';
+        var restore = function () {
+            wrapDom.innerHTML = '';
+            wrapDom.style.display = 'none';
+            window.onafterprint = null;
+        };
+        window.onafterprint = restore;
+        setTimeout(function () {
+            window.print();
+            setTimeout(restore, 1500);
+        }, 150);
+    }).catch(function (e) {
+        hideBusy();
+        alert('打印准备失败：' + (e && e.message ? e.message : e));
+    });
 }
 
-/* ==================================================================
-   五、备份 / 导入 / 列表 / 项目管理
-   ================================================================== */
+/* ---------- 备份 / 导入 ---------- */
 function exportAllBackup() {
-    var allData = { projectList: getProjectList(), logs: getLogs() };
-    var blob = new Blob([JSON.stringify(allData, null, 2)], { type: "application/json" });
-    var name = '施工日志全部备份_' + new Date().toLocaleDateString().replace(/[\/:]/g, '-') + '.json';
-    downloadFile(blob, name);
-    toast("全部备份已下载，妥善保存；清除浏览器缓存后可以恢复", 3200);
+    var logs = getLogs();
+    var totalPhotos = 0;
+    logs.forEach(function (l) { totalPhotos += (l.photos || []).length; });
+    if (totalPhotos > 0 && !confirm('备份包含 ' + logs.length + ' 条日志和 ' + totalPhotos + ' 张照片，文件可能较大（几十 MB），生成需要一点时间。是否继续？')) return;
+
+    showBusy('正在打包备份…');
+    var done = 0;
+    Promise.all(logs.map(function (log) {
+        var refs = (log.photos || []).map(toRef).filter(Boolean);
+        return Promise.all(refs.map(function (ref) {
+            return refDataUrl(ref).then(function (d) { return d; });
+        })).then(function (urls) {
+            done++;
+            $('busyText').textContent = '正在打包备份 ' + done + '/' + logs.length + '…';
+            var copy = {};
+            for (var k in log) if (Object.prototype.hasOwnProperty.call(log, k)) copy[k] = log[k];
+            copy.photos = urls.filter(Boolean);
+            return copy;
+        });
+    })).then(function (outLogs) {
+        var allData = { app: '施工日志', version: 2, exportedAt: new Date().toISOString(), projectList: getProjectList(), logs: outLogs };
+        var blob = new Blob([JSON.stringify(allData)], { type: "application/json" });
+        var name = '施工日志全部备份_' + new Date().toLocaleDateString().replace(/[\/:]/g, '-') + '.json';
+        downloadFile(blob, name);
+        hideBusy();
+        toast('备份已生成（' + (blob.size / 1048576).toFixed(1) + ' MB），请妥善保存', 4000);
+    }).catch(function (e) {
+        hideBusy();
+        alert('备份失败：' + (e && e.message ? e.message : e));
+    });
 }
 
-document.getElementById('importFileInput').onchange = function (e) {
+$('importFileInput').onchange = function (e) {
     var f = e.target.files[0];
+    e.target.value = '';
     if (!f) return;
     var reader = new FileReader();
     reader.onload = function (ev) {
+        var data;
         try {
-            var data = JSON.parse(ev.target.result);
+            data = JSON.parse(ev.target.result);
+        } catch (err) {
+            alert('文件格式错误，不是备份 json');
+            return;
+        }
+        var logs = Array.isArray(data.logs) ? data.logs : [];
+        if (!confirm('导入将覆盖本机现有的 ' + getLogs().length + ' 条日志（备份内有 ' + logs.length + ' 条），确定继续吗？')) return;
+
+        showBusy('正在导入…');
+        var done = 0;
+        var out = [];
+        logs.reduce(function (p, log) {
+            return p.then(function () {
+                done++;
+                $('busyText').textContent = '正在导入日志 ' + done + '/' + logs.length + '…';
+                var refs = (log.photos || []).map(toRef).filter(Boolean);
+                return Promise.all(refs.map(function (ref) {
+                    if (ref.id) return { id: ref.id };
+                    return persistPhotos([ref]).then(function (r) { return r[0] || null; });
+                })).then(function (list) {
+                    var copy = {};
+                    for (var k in log) if (Object.prototype.hasOwnProperty.call(log, k)) copy[k] = log[k];
+                    copy.photos = list.filter(Boolean);
+                    out.push(copy);
+                });
+            });
+        }, Promise.resolve()).then(function () {
             if (data.projectList) saveProjectList(data.projectList);
-            if (data.logs) saveLogs(data.logs);
+            saveLogs(out);
+            hideBusy();
             renderProjectSelect();
             renderSetProjectSel();
             renderProjectManage();
-            toast("✅ 导入备份成功");
-        } catch (err) {
-            alert("文件格式错误，不是备份 json");
-        }
+            renderList();
+            toast('✅ 导入完成，共 ' + out.length + ' 条日志');
+        }).catch(function (err) {
+            hideBusy();
+            alert('导入失败：' + (err && err.message ? err.message : err));
+        });
     };
     reader.readAsText(f);
-    e.target.value = "";
 };
 
+/* ---------- 日志列表 ---------- */
+function photoStripHtml(refs) {
+    var out = '<div class="log-photos">';
+    refs.forEach(function (ref) {
+        var key = 'r' + (++refSeq);
+        refMap[key] = ref;
+        out += '<img data-ref="' + key + '" alt="">';
+    });
+    return out + '</div>';
+}
+
+function paintRefs(root) {
+    Array.prototype.forEach.call(root.querySelectorAll('img[data-ref]'), function (img) {
+        var ref = refMap[img.getAttribute('data-ref')];
+        if (!ref) return;
+        srcOf(ref).then(function (src) { if (src) img.src = src; });
+    });
+}
+
 function renderList() {
-    var box = document.getElementById('listBox');
+    var box = $('listBox');
     var logs = getLogs();
     if (logs.length === 0) {
         box.innerHTML = '<div class="empty-tip">暂无施工日志记录</div>';
         return;
     }
+    refMap = {};
+    refSeq = 0;
     var html = '';
     logs.forEach(function (item) {
+        var refs = (item.photos || []).map(toRef).filter(Boolean);
         html += '<div class="log-card">' +
-            '<h4>' + escHtml(item.workDate) + ' 施工日志｜' + escHtml(item.project || '') + '</h4>' +
+            '<h4 class="log-title" data-id="' + item.id + '">' + escHtml(item.workDate) + ' 施工日志｜' + escHtml(item.project || '') + '</h4>' +
             '<p><b>项目地址：</b>' + escHtml(item.projectAddr || '-') + '</p>' +
             '<p><b>建设单位：</b>' + escHtml(item.buildUnit || '-') + '</p>' +
             '<p><b>施工单位：</b>' + escHtml(item.contractor || '-') + '</p>' +
@@ -1583,26 +1979,23 @@ function renderList() {
             '<p><b>【明日计划】</b>' + escHtml(item.workTomorrow || '-') + '</p>' +
             '<p><b>【质量安全】</b>' + escHtml(item.qualitySafe || '-') + '</p>' +
             '<p><b>【材料进场】</b>' + escHtml(item.materials || '-') + '</p>' +
-            (item.photos && item.photos.length > 0
-                ? '<div class="log-photos">' + item.photos.map(function (p) { return '<img src="' + p + '">'; }).join('') + '</div>'
-                : '') +
+            (refs.length ? photoStripHtml(refs) : '') +
             '<p style="margin-top:6px"><b>负责人：</b>' + escHtml(item.personCharge || '-') +
             '　<b>记录人：</b>' + escHtml(item.recorder || '-') + '</p>' +
             '<div class="btn-row">' +
+            '<button class="edit-btn" data-id="' + item.id + '">✏️ 编辑</button>' +
             '<button class="docx-btn" data-id="' + item.id + '">📄 导出 Word</button>' +
             '<button class="print-btn" data-id="' + item.id + '">🖨 打印/存PDF</button>' +
-            '<button class="del-btn danger" data-id="' + item.id + '">删除本条</button>' +
+            '<button class="del-btn danger" data-id="' + item.id + '">删除</button>' +
             '</div>' +
             '</div>';
     });
     box.innerHTML = html;
+    paintRefs(box);
 
-    function escHtml(s) {
-        return String(s == null ? '' : s)
-            .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;');
-    }
-
+    Array.prototype.forEach.call(box.querySelectorAll('.edit-btn, .log-title'), function (btn) {
+        btn.onclick = function () { startEdit(Number(btn.dataset.id)); };
+    });
     Array.prototype.forEach.call(box.querySelectorAll('.print-btn'), function (btn) {
         btn.onclick = function () {
             var id = Number(btn.dataset.id);
@@ -1619,16 +2012,22 @@ function renderList() {
     });
     Array.prototype.forEach.call(box.querySelectorAll('.del-btn'), function (btn) {
         btn.onclick = function () {
-            if (!confirm('确定删除这条日志吗？')) return;
+            if (!confirm('确定删除这条日志吗？删除后不可恢复。')) return;
             var delId = Number(btn.dataset.id);
-            saveLogs(getLogs().filter(function (x) { return x.id !== delId; }));
+            var logs2 = getLogs();
+            var target = logs2.filter(function (x) { return x.id === delId; })[0];
+            saveLogs(logs2.filter(function (x) { return x.id !== delId; }));
+            if (target) dropPhotos(target.photos);
+            if (editingId === delId) cancelEdit();
             renderList();
+            toast('已删除');
         };
     });
 }
 
+/* ---------- 项目管理列表 ---------- */
 function renderProjectManage() {
-    var box = document.getElementById('projectManageBox');
+    var box = $('projectManageBox');
     var list = getProjectList();
     var html = '';
     list.forEach(function (p) {
@@ -1651,16 +2050,104 @@ function renderProjectManage() {
     });
 }
 
-function escHtml(s) {
-    return String(s == null ? '' : s)
-        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;');
+/* ---------- 存储空间信息 ---------- */
+function updateStorageInfo() {
+    var el = $('storageInfo');
+    if (!el) return;
+    if (!navigator.storage || !navigator.storage.estimate) {
+        el.textContent = '照片保存在本机浏览器的大容量存储中（IndexedDB）。';
+        return;
+    }
+    navigator.storage.estimate().then(function (est) {
+        var usedBytes = est.usage || 0;
+        var quota = (est.quota || 0) / 1048576;
+        var usedTxt = usedBytes < 1048576 * 0.1 ? Math.round(usedBytes / 1024) + ' KB' : (usedBytes / 1048576).toFixed(1) + ' MB';
+        el.textContent = '本机已用约 ' + usedTxt + '，浏览器可用约 ' +
+            (quota >= 1024 ? (quota / 1024).toFixed(1) + ' GB' : quota.toFixed(0) + ' MB') +
+            '（照片存 IndexedDB，不占用原来 5MB 的文字空间）';
+    }).catch(function () {
+        el.textContent = '照片保存在本机浏览器的大容量存储中（IndexedDB）。';
+    });
+}
+
+/* ---------- 老数据迁移：把 localStorage 里的 base64 照片搬进 IndexedDB ---------- */
+function migrateLegacyPhotos() {
+    var logs = getLogs();
+    var need = false;
+    logs.forEach(function (l) {
+        (l.photos || []).forEach(function (p) {
+            if (typeof p === 'string' && p.indexOf('data:') === 0) need = true;
+        });
+    });
+    if (!need) return Promise.resolve(0);
+
+    showBusy('正在把照片转移到更大容量的存储…');
+    var count = 0;
+    return logs.reduce(function (p, log) {
+        return p.then(function () {
+            var arr = log.photos || [];
+            return arr.reduce(function (q, ph, i) {
+                return q.then(function () {
+                    if (typeof ph !== 'string' || ph.indexOf('data:') !== 0) return;
+                    var parsed = DocxGen.parsePhoto(ph);
+                    if (!parsed) return;
+                    var id = newPhotoId();
+                    return DB.put(id, new Blob([parsed.bytes], { type: parsed.mime })).then(function () {
+                        arr[i] = { id: id };
+                        count++;
+                        $('busyText').textContent = '正在转移照片 ' + count + ' 张…';
+                    });
+                });
+            }, Promise.resolve());
+        });
+    }, Promise.resolve()).then(function () {
+        if (count) saveLogs(logs);
+        hideBusy();
+        if (count) toast('已把 ' + count + ' 张照片转移到本机大容量存储，后面可以继续放心拍照', 4000);
+        return count;
+    }).catch(function (e) {
+        hideBusy();
+        toast('照片转移未完成：' + (e && e.message ? e.message : e), 4000);
+        return 0;
+    });
+}
+
+function cleanupOrphanPhotos() {
+    if (!window.indexedDB) return Promise.resolve();
+    var used = {};
+    getLogs().forEach(function (l) {
+        (l.photos || []).forEach(function (p) {
+            var r = toRef(p);
+            if (r && r.id) used[r.id] = 1;
+        });
+    });
+    return DB.keys().then(function (keys) {
+        var jobs = [];
+        keys.forEach(function (k) {
+            if (!used[k]) jobs.push(DB.del(k).catch(function () { }));
+        });
+        return Promise.all(jobs);
+    }).catch(function () { });
+}
+
+function requestPersist() {
+    try {
+        if (navigator.storage && navigator.storage.persist) {
+            navigator.storage.persist().catch(function () { });
+        }
+    } catch (e) { }
 }
 
 /* ---------- 启动 ---------- */
 renderProjectSelect();
 renderSetProjectSel();
-document.querySelector('.tab[data-page="page-form"]').classList.add('active');
+switchTab('page-form');
+requestPersist();
+migrateLegacyPhotos().then(function () {
+    return cleanupOrphanPhotos();
+}).then(function () {
+    if (document.querySelector('#page-list.active')) renderList();
+});
 </script>
 </body>
 </html>
