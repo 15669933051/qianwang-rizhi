@@ -321,6 +321,43 @@
             font-size:13px;
         }
         .log-title{cursor:pointer;}
+
+        /* ============ 批量选择导出 ============ */
+        .log-card.selectable{cursor:pointer;position:relative;padding-left:42px;}
+        .log-card.selected{box-shadow:0 0 0 2px #1a73e8 inset;background:#f7faff;}
+        .sel-box{
+            position:absolute;left:12px;top:14px;width:20px;height:20px;
+            border:2px solid #c8d4e6;border-radius:50%;background:#fff;box-sizing:border-box;
+        }
+        .sel-box.on{background:#1a73e8;border-color:#1a73e8;}
+        .sel-box.on:after{
+            content:'';position:absolute;left:6px;top:2px;width:5px;height:10px;
+            border:solid #fff;border-width:0 2px 2px 0;transform:rotate(45deg);
+        }
+        #selectModeBtn.active{background:#e8f0fe;color:#1a73e8;box-shadow:inset 0 0 0 1px #1a73e8;}
+        #selectBar{
+            position:fixed;left:0;right:0;bottom:calc(53px + env(safe-area-inset-bottom));
+            background:#fff;border-top:1px solid #e6e6e6;
+            box-shadow:0 -2px 10px rgba(0,0,0,.08);
+            padding:8px 10px;display:none;z-index:25;
+            align-items:center;gap:8px;flex-wrap:wrap;
+        }
+        #selectBar.show{display:flex;}
+        #selectBar .sel-all{display:flex;align-items:center;gap:5px;font-size:13px;color:#333;}
+        #selectBar .sel-all input{width:18px;height:18px;}
+        #selectBar .sel-count{font-size:13px;color:#1a73e8;font-weight:600;margin-right:auto;}
+        #selectBar .sel-actions{display:flex;gap:6px;}
+        #selectBar .sel-actions button{
+            padding:8px 10px;border-radius:6px;font-size:13px;
+            border:1px solid #dbe6f6;background:#f4f8ff;color:#1a73e8;
+        }
+        #selectBar .sel-actions button:disabled{opacity:.45;}
+        #selectBar .sel-actions button.primary{background:#1a73e8;color:#fff;border-color:#1a73e8;}
+        body.selecting .wrap{padding-bottom:160px;}
+        body.selecting .save-btn-wrap{display:none;}
+        .print-page{page-break-after:always;}
+        .print-page:last-child{page-break-after:auto;}
+        .sel-tip{font-size:12px;color:#8a94a6;margin-top:6px;}
         #importFileInput{display:none;}
 
         /* ============ 右上角提示 ============ */
@@ -589,6 +626,7 @@ table.doc-table td.head-left{text-align:left;}
             <div class="list-top-bar">
                 <button onclick="exportAllBackup()">📦全部日志备份(json)</button>
                 <button onclick="document.getElementById('importFileInput').click()">📂导入备份</button>
+                <button id="selectModeBtn" onclick="toggleSelectMode()">☑️选择导出</button>
                 <input type="file" id="importFileInput" accept=".json,application/json" style="display:none">
             </div>
             <div id="listBox"></div>
@@ -618,6 +656,7 @@ table.doc-table td.head-left{text-align:left;}
                 <ul>
                     <li>所有数据只保存在本机浏览器，不上传服务器。<b>文字存 localStorage，照片单独存 IndexedDB（容量大，不占 5MB 文字空间）</b>；换手机请用「全部日志备份」导出 json 再导入。</li>
                     <li>日志列表里点日志标题或「✏️ 编辑」可以修改已保存的日志，改完点页面底部的「更新本条施工日志」。</li>
+                    <li>批量导出：日志列表点「☑️选择导出」，可单选、多选或全选，点「导出Word」会把选中的日志合并成一个 Word（每条一页，可直接打印装订），也可合并打印/存 PDF。</li>
                     <li>导出 Word 为纯前端现场生成（不依赖任何网络或第三方库），表格严格按施工日志模板：信息表 + 生产记录 + 技术质量安全 + 材料进场 + 现场照片（3 张一行）+ 签字栏。</li>
                     <li>照片在拍照时已压缩（长边 1000px），导出时直接写入文档，不再二次解码，手机内存占用小。</li>
                     <li>导出耗时：生成过程为纯本地计算，电脑实测 0 张 0.4 毫秒、6 张 4.5 毫秒、12 张 8 毫秒；手机约为其 10～20 倍（0.1～0.3 秒），主要时间花在保存文件上。</li>
@@ -630,6 +669,16 @@ table.doc-table td.head-left{text-align:left;}
 
     <div class="save-btn-wrap">
         <button id="saveLogBtn">💾 保存本条施工日志</button>
+    </div>
+
+    <div id="selectBar">
+        <label class="sel-all"><input type="checkbox" id="selAllChk"> 全选</label>
+        <span class="sel-count" id="selCount">已选 0 条</span>
+        <div class="sel-actions">
+            <button id="selExportBtn" class="primary" disabled>📄 导出Word</button>
+            <button id="selPrintBtn" disabled>🖨 打印</button>
+            <button id="selExitBtn">退出</button>
+        </div>
     </div>
 
     <div class="tab-bar">
@@ -933,7 +982,8 @@ var DocxGen = (function () {
         return s === '' ? dft : s;
     }
 
-    function buildDocumentXml(log, photos) {
+    function buildLogBody(log, photos, start, pageBreak) {
+        start = start || 0;
         var d = cnDate(log.workDate);
         var wk = weekName(log.workDate);
         var remark = textOr(log.remark, '');
@@ -981,7 +1031,8 @@ var DocxGen = (function () {
         rows += tr(tc(9638, p('材料、构配件进场记录', { bold: true, align: 'left' }), { span: 4, shd: 'F3F4F6' }), { h: 400 });
         rows += tr(tc(9638, p(textOr(log.materials, '无'), { vAlign: 'top' }), { span: 4, vAlign: 'top' }), { h: 800 });
 
-        var xml = '<w:p><w:pPr><w:spacing w:before="0" w:after="240" w:line="288" w:lineRule="auto"/>' +
+        var xml = '<w:p><w:pPr>' + (pageBreak ? '<w:pageBreakBefore/>' : '') +
+            '<w:spacing w:before="0" w:after="240" w:line="288" w:lineRule="auto"/>' +
             '<w:jc w:val="center"/></w:pPr><w:r>' + rpr({ bold: true, sz: 44 }) +
             '<w:t xml:space="preserve">施 工 日 志</w:t></w:r></w:p>';
         xml += tbl(COL, rows);
@@ -1000,7 +1051,8 @@ var DocxGen = (function () {
                     var sc = Math.min(PHOTO_MAX_W / img.w, PHOTO_MAX_H / img.h);
                     var cx = Math.max(1, Math.round(img.w * sc));
                     var cy = Math.max(1, Math.round(img.h * sc));
-                    cells += tc(PHOTO_COL[c], pDrawing('rId' + (idx + 2), idx + 1, cx, cy, 'image' + (idx + 1) + '.' + img.ext), { vAlign: 'center' });
+                    var gid = start + idx + 1;   /* 全文档唯一的图片序号 */
+                    cells += tc(PHOTO_COL[c], pDrawing('rId' + (gid + 1), gid, cx, cy, 'image' + gid + '.' + img.ext), { vAlign: 'center' });
                 } else {
                     cells += tc(PHOTO_COL[c], p(''), { vAlign: 'center' });
                 }
@@ -1015,13 +1067,8 @@ var DocxGen = (function () {
             tc(4819, p('记录人：' + textOr(log.recorder, ''), { sz: 24, align: 'right' }), { noBorder: true }), { h: 420 });
         xml += tbl([4819, 4819], sign, { noBorder: true });
 
-        /* ---- 页面设置（A4，页边距与模板一致） ---- */
-        xml += '<w:sectPr><w:pgSz w:w="11906" w:h="16838" w:orient="portrait"/>' +
-            '<w:pgMar w:top="1021" w:right="1134" w:bottom="1021" w:left="1134" w:header="567" w:footer="567" w:gutter="0"/>' +
-            '<w:docGrid w:linePitch="360"/></w:sectPr>';
-
-        return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\r\n' +
-            '<w:document ' + NS + '><w:body>' + xml + '</w:body></w:document>';
+        /* ---- 页面设置由外层 build() 统一添加 ---- */
+        return xml;
     }
 
     /* ---------- 其它部件 ---------- */
@@ -1062,32 +1109,61 @@ var DocxGen = (function () {
         return s + '</Relationships>';
     }
 
-    /* ---------- 主入口 ---------- */
-    function build(log) {
-        var photos = [];
-        var raw = log.photos || [];
-        for (var i = 0; i < raw.length; i++) {
-            var ph = parsePhoto(raw[i]);
-            if (ph) photos.push(ph);
-        }
+    /* ---------- 主入口：支持单条或多条（合并为一个 Word，每条一页） ---------- */
+    function build(input) {
+        var logs = Array.isArray(input) ? input.slice() : [input];
+        if (!logs.length) logs = [{}];
+
+        var allPhotos = [];
+        var items = logs.map(function (log) {
+            var photos = [];
+            var raw = (log && log.photos) || [];
+            for (var i = 0; i < raw.length; i++) {
+                var ph = parsePhoto(raw[i]);
+                if (ph) photos.push(ph);
+            }
+            var start = allPhotos.length;
+            allPhotos = allPhotos.concat(photos);
+            return { log: log || {}, photos: photos, start: start };
+        });
+
+        var body = '';
+        items.forEach(function (item, i) {
+            body += buildLogBody(item.log, item.photos, item.start, i > 0);
+        });
+        body += '<w:sectPr><w:pgSz w:w="11906" w:h="16838" w:orient="portrait"/>' +
+            '<w:pgMar w:top="1021" w:right="1134" w:bottom="1021" w:left="1134" w:header="567" w:footer="567" w:gutter="0"/>' +
+            '<w:docGrid w:linePitch="360"/></w:sectPr>';
+
+        var docXml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\r\n' +
+            '<w:document ' + NS + '><w:body>' + body + '</w:body></w:document>';
 
         var files = [
-            { name: '[Content_Types].xml', data: u8(contentTypes(photos.some(function (x) { return x.ext === 'png'; }))) },
+            { name: '[Content_Types].xml', data: u8(contentTypes(allPhotos.some(function (x) { return x.ext === 'png'; }))) },
             { name: '_rels/.rels', data: u8(RELS_ROOT) },
-            { name: 'word/document.xml', data: u8(buildDocumentXml(log, photos)) },
-            { name: 'word/_rels/document.xml.rels', data: u8(docRels(photos)) },
+            { name: 'word/document.xml', data: u8(docXml) },
+            { name: 'word/_rels/document.xml.rels', data: u8(docRels(allPhotos)) },
             { name: 'word/styles.xml', data: u8(STYLES) }
         ];
-        photos.forEach(function (ph, idx) {
+        allPhotos.forEach(function (ph, idx) {
             files.push({ name: 'word/media/image' + (idx + 1) + '.' + ph.ext, data: ph.bytes });
         });
 
-        var bytes = makeZip(files);
-        var safe = String(log.project || '施工日志').replace(/[\\/:*?"<>|]/g, '_');
-        return {
-            bytes: bytes,
-            name: safe + '_施工日志_' + (log.workDate || '') + '.docx'
-        };
+        var first = items[0].log || {};
+        var safe = String(first.project || '施工日志').replace(/[\\/:*?"<>|]/g, '_');
+        var name;
+        if (items.length === 1) {
+            name = safe + '_施工日志_' + (first.workDate || '') + '.docx';
+        } else {
+            var dates = items.map(function (x) { return x.log.workDate || ''; }).filter(Boolean).sort();
+            var range = '';
+            if (dates.length) {
+                range = dates[0] === dates[dates.length - 1] ? dates[0] : dates[0] + '至' + dates[dates.length - 1];
+            }
+            name = safe + '_施工日志_' + items.length + '条' + (range ? '_' + range : '') + '.docx';
+        }
+
+        return { bytes: makeZip(files), name: name };
     }
 
     return { build: build, parsePhoto: parsePhoto, cnDate: cnDate, weekName: weekName };
@@ -1665,6 +1741,7 @@ $('saveLogBtn').onclick = function () {
 
 /* ---------- 标签切换 ---------- */
 function switchTab(pageId) {
+    if (pageId !== 'page-list' && selectMode) toggleSelectMode(false);
     Array.prototype.forEach.call(document.querySelectorAll('.tab'), function (t) {
         t.classList.toggle('active', t.dataset.page === pageId);
     });
@@ -1678,43 +1755,56 @@ Array.prototype.forEach.call(document.querySelectorAll('.tab'), function (tab) {
     tab.onclick = function () { switchTab(tab.dataset.page); window.scrollTo(0, 0); };
 });
 
-/* ---------- 导出 Word ---------- */
+/* ---------- 导出 Word（单条 / 多条合并） ---------- */
 var pending = null;
 
+function logToSrc(logItem, bytes) {
+    return {
+        project: logItem.project,
+        projectAddr: logItem.projectAddr,
+        buildUnit: logItem.buildUnit,
+        contractor: logItem.contractor,
+        supervisor: logItem.supervisor,
+        designUnit: logItem.designUnit,
+        contractNo: logItem.contractNo,
+        workDate: logItem.workDate,
+        weather: logWeather(logItem),
+        wind: logWind(logItem),
+        tempInfo: logItem.tempInfo,
+        remark: logItem.remark,
+        personCharge: logItem.personCharge,
+        recorder: logItem.recorder,
+        workToday: logItem.workToday,
+        workTomorrow: logItem.workTomorrow,
+        qualitySafe: logItem.qualitySafe,
+        materials: logItem.materials,
+        photos: bytes
+    };
+}
+
 function exportDocx(logItem) {
-    showBusy('正在生成 Word 文档…');
+    exportDocxList([logItem]);
+}
+
+function exportDocxList(logs) {
+    logs = logs || [];
+    if (!logs.length) return;
+    showBusy(logs.length > 1 ? '正在生成合并 Word（' + logs.length + ' 条）…' : '正在生成 Word 文档…');
     var t0 = nowMs();
     setTimeout(function () {
-        var refs = (logItem.photos || []).map(toRef).filter(Boolean);
-        Promise.all(refs.map(refBytes)).then(function (list) {
-            var bytes = list.filter(Boolean);
-            var src = {
-                project: logItem.project,
-                projectAddr: logItem.projectAddr,
-                buildUnit: logItem.buildUnit,
-                contractor: logItem.contractor,
-                supervisor: logItem.supervisor,
-                designUnit: logItem.designUnit,
-                contractNo: logItem.contractNo,
-                workDate: logItem.workDate,
-                weather: logWeather(logItem),
-                wind: logWind(logItem),
-                tempInfo: logItem.tempInfo,
-                remark: logItem.remark,
-                personCharge: logItem.personCharge,
-                recorder: logItem.recorder,
-                workToday: logItem.workToday,
-                workTomorrow: logItem.workTomorrow,
-                qualitySafe: logItem.qualitySafe,
-                materials: logItem.materials,
-                photos: bytes
-            };
-            var result = DocxGen.build(src);
+        Promise.all(logs.map(function (logItem) {
+            var refs = (logItem.photos || []).map(toRef).filter(Boolean);
+            return Promise.all(refs.map(refBytes)).then(function (list) {
+                return logToSrc(logItem, list.filter(Boolean));
+            });
+        })).then(function (srcList) {
+            var result = DocxGen.build(srcList);
             var blob = new Blob([result.bytes], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
             var cost = nowMs() - t0;
+            var photoCount = srcList.reduce(function (a, x) { return a + (x.photos ? x.photos.length : 0); }, 0);
             pending = { blob: blob, name: result.name };
             hideBusy();
-            showExportModal(result.name, blob.size, bytes.length, cost);
+            showExportModal(result.name, blob.size, photoCount, cost, srcList.length);
         }).catch(function (err) {
             hideBusy();
             alert('生成 Word 失败：' + (err && err.message ? err.message : err));
@@ -1722,11 +1812,12 @@ function exportDocx(logItem) {
     }, 60);
 }
 
-function showExportModal(name, size, count, ms) {
+function showExportModal(name, size, count, ms, logCount) {
     $('modalInfo').textContent = name;
     $('modalHint').innerHTML =
-        '大小 ' + (size / 1024).toFixed(0) + ' KB　·　照片 ' + count + ' 张　·　生成耗时 ' +
-        (ms < 1 ? '小于 1' : ms.toFixed(0)) + ' 毫秒<br>' +
+        '大小 ' + (size / 1024).toFixed(0) + ' KB　·　' + (logCount > 1 ? logCount + ' 条日志　·　' : '') +
+        '照片 ' + count + ' 张　·　生成耗时 ' + (ms < 1 ? '小于 1' : ms.toFixed(0)) + ' 毫秒<br>' +
+        (logCount > 1 ? '每条日志各占一页，可直接打印装订。<br>' : '') +
         'iPhone 请用「分享 / 存储到文件」把文档存到「文件」App 或直接发给监理。';
     $('modalShare').style.display = (navigator.canShare && navigator.share) ? '' : 'none';
     $('modal').classList.add('show');
@@ -1772,69 +1863,26 @@ $('modalShare').onclick = function () {
 $('modalClose').onclick = function () { $('modal').classList.remove('show'); };
 $('modal').onclick = function (e) { if (e.target === this) this.classList.remove('show'); };
 
-/* ---------- A4 打印 / 存 PDF ---------- */
+/* ---------- A4 打印 / 存 PDF（支持单条或多条，每条一页） ---------- */
 function printItem(logItem) {
-    showBusy('正在准备打印…');
-    var refs = (logItem.photos || []).map(toRef).filter(Boolean);
-    Promise.all(refs.map(srcOf)).then(function (srcs) {
+    printLogs([logItem]);
+}
+
+function printLogs(list) {
+    list = list || [];
+    if (!list.length) return;
+    showBusy(list.length > 1 ? '正在准备打印（' + list.length + ' 条）…' : '正在准备打印…');
+    Promise.all(list.map(function (logItem) {
+        var refs = (logItem.photos || []).map(toRef).filter(Boolean);
+        return Promise.all(refs.map(srcOf)).then(function (srcs) {
+            return buildPrintBlock(logItem, srcs);
+        });
+    })).then(function (blocks) {
         hideBusy();
-        var photoRows = Math.max(2, Math.ceil(refs.length / 3));
-
-        function v(x, dft) {
-            var s = (x == null ? '' : String(x)).trim();
-            return s === '' ? (dft || '-') : s;
-        }
-
-        var remark = (logItem.remark || '').trim();
-        if ((logItem.contractNo || '').trim()) {
-            remark = '合同号：' + logItem.contractNo + (remark ? '　' + remark : '');
-        }
-        if (!remark) remark = '-';
-
-        var d = DocxGen.cnDate(logItem.workDate);
-        var wk = DocxGen.weekName(logItem.workDate);
-
-        var photoHtml = '';
-        for (var r = 0; r < photoRows; r++) {
-            photoHtml += '<tr>';
-            for (var c = 0; c < 3; c++) {
-                var ph = srcs[r * 3 + c];
-                photoHtml += '<td class="ph">' + (ph ? '<img src="' + ph + '">' : '') + '</td>';
-            }
-            photoHtml += '</tr>';
-        }
-
-        var html =
-            '<h1 class="doc-title">施 工 日 志</h1>' +
-            '<table class="doc-table">' +
-            '<colgroup><col style="width:27.2mm"><col style="width:57.8mm"><col style="width:27.2mm"><col style="width:57.8mm"></colgroup>' +
-            '<tr><td class="head">项目名称</td><td>' + escHtml(v(logItem.project)) + '</td><td class="head">项目地址</td><td>' + escHtml(v(logItem.projectAddr)) + '</td></tr>' +
-            '<tr><td class="head">建设单位</td><td>' + escHtml(v(logItem.buildUnit)) + '</td><td class="head">监理单位</td><td>' + escHtml(v(logItem.supervisor)) + '</td></tr>' +
-            '<tr><td class="head">施工单位</td><td>' + escHtml(v(logItem.contractor)) + '</td><td class="head">设计单位</td><td>' + escHtml(v(logItem.designUnit)) + '</td></tr>' +
-            '<tr><td colspan="4">日　　期：' + escHtml(d || '-') + (wk ? '　' + wk : '') + '</td></tr>' +
-            '<tr><td class="head">天气</td><td>' + escHtml(v(logWeather(logItem))) + '</td><td class="head">风力</td><td>' + escHtml(v(logWind(logItem))) + '</td></tr>' +
-            '<tr><td class="head">温度</td><td>' + escHtml(v(logItem.tempInfo)) + '</td><td class="head">备注</td><td>' + escHtml(remark) + '</td></tr>' +
-            '<tr><td colspan="4" class="head head-left">生产情况记录</td></tr>' +
-            '<tr><td colspan="4" class="body" style="height:32mm">' + escHtml('今日完成：' + v(logItem.workToday, '无') + '\n\n明日计划：' + v(logItem.workTomorrow, '无')) + '</td></tr>' +
-            '<tr><td colspan="4" class="head head-left">技术质量安全工作记录</td></tr>' +
-            '<tr><td colspan="4" class="body" style="height:23mm">' + escHtml(v(logItem.qualitySafe, '无')) + '</td></tr>' +
-            '<tr><td colspan="4" class="head head-left">材料、构配件进场记录</td></tr>' +
-            '<tr><td colspan="4" class="body" style="height:14mm">' + escHtml(v(logItem.materials, '无')) + '</td></tr>' +
-            '</table>' +
-            '<div style="height:2mm"></div>' +
-            '<table class="doc-table photo-table">' +
-            '<colgroup><col style="width:56.6mm"><col style="width:56.6mm"><col style="width:56.8mm"></colgroup>' +
-            '<thead><tr><td class="head head-left" colspan="3">现场照片</td></tr></thead>' +
-            '<tbody>' + photoHtml + '</tbody>' +
-            '</table>' +
-            '<div style="height:2mm"></div>' +
-            '<table class="sign-table">' +
-            '<tr><td>工程负责人：' + escHtml((logItem.personCharge || '').trim()) + '</td>' +
-            '<td style="text-align:right">记录人：' + escHtml((logItem.recorder || '').trim()) + '</td></tr>' +
-            '</table>';
-
         var wrapDom = $('printWrap');
-        wrapDom.innerHTML = html;
+        wrapDom.innerHTML = blocks.map(function (b) {
+            return '<div class="print-page">' + b + '</div>';
+        }).join('');
         wrapDom.style.display = 'block';
         var restore = function () {
             wrapDom.innerHTML = '';
@@ -1850,6 +1898,62 @@ function printItem(logItem) {
         hideBusy();
         alert('打印准备失败：' + (e && e.message ? e.message : e));
     });
+}
+
+function buildPrintBlock(logItem, srcs) {
+    var photoRows = Math.max(2, Math.ceil(srcs.length / 3));
+
+    function v(x, dft) {
+        var s = (x == null ? '' : String(x)).trim();
+        return s === '' ? (dft || '-') : s;
+    }
+
+    var remark = (logItem.remark || '').trim();
+    if ((logItem.contractNo || '').trim()) {
+        remark = '合同号：' + logItem.contractNo + (remark ? '　' + remark : '');
+    }
+    if (!remark) remark = '-';
+
+    var d = DocxGen.cnDate(logItem.workDate);
+    var wk = DocxGen.weekName(logItem.workDate);
+
+    var photoHtml = '';
+    for (var r = 0; r < photoRows; r++) {
+        photoHtml += '<tr>';
+        for (var c = 0; c < 3; c++) {
+            var ph = srcs[r * 3 + c];
+            photoHtml += '<td class="ph">' + (ph ? '<img src="' + ph + '">' : '') + '</td>';
+        }
+        photoHtml += '</tr>';
+    }
+
+    return '<h1 class="doc-title">施 工 日 志</h1>' +
+        '<table class="doc-table">' +
+        '<colgroup><col style="width:27.2mm"><col style="width:57.8mm"><col style="width:27.2mm"><col style="width:57.8mm"></colgroup>' +
+        '<tr><td class="head">项目名称</td><td>' + escHtml(v(logItem.project)) + '</td><td class="head">项目地址</td><td>' + escHtml(v(logItem.projectAddr)) + '</td></tr>' +
+        '<tr><td class="head">建设单位</td><td>' + escHtml(v(logItem.buildUnit)) + '</td><td class="head">监理单位</td><td>' + escHtml(v(logItem.supervisor)) + '</td></tr>' +
+        '<tr><td class="head">施工单位</td><td>' + escHtml(v(logItem.contractor)) + '</td><td class="head">设计单位</td><td>' + escHtml(v(logItem.designUnit)) + '</td></tr>' +
+        '<tr><td colspan="4">日　　期：' + escHtml(d || '-') + (wk ? '　' + wk : '') + '</td></tr>' +
+        '<tr><td class="head">天气</td><td>' + escHtml(v(logWeather(logItem))) + '</td><td class="head">风力</td><td>' + escHtml(v(logWind(logItem))) + '</td></tr>' +
+        '<tr><td class="head">温度</td><td>' + escHtml(v(logItem.tempInfo)) + '</td><td class="head">备注</td><td>' + escHtml(remark) + '</td></tr>' +
+        '<tr><td colspan="4" class="head head-left">生产情况记录</td></tr>' +
+        '<tr><td colspan="4" class="body" style="height:32mm">' + escHtml('今日完成：' + v(logItem.workToday, '无') + '\n\n明日计划：' + v(logItem.workTomorrow, '无')) + '</td></tr>' +
+        '<tr><td colspan="4" class="head head-left">技术质量安全工作记录</td></tr>' +
+        '<tr><td colspan="4" class="body" style="height:23mm">' + escHtml(v(logItem.qualitySafe, '无')) + '</td></tr>' +
+        '<tr><td colspan="4" class="head head-left">材料、构配件进场记录</td></tr>' +
+        '<tr><td colspan="4" class="body" style="height:14mm">' + escHtml(v(logItem.materials, '无')) + '</td></tr>' +
+        '</table>' +
+        '<div style="height:2mm"></div>' +
+        '<table class="doc-table photo-table">' +
+        '<colgroup><col style="width:56.6mm"><col style="width:56.6mm"><col style="width:56.8mm"></colgroup>' +
+        '<thead><tr><td class="head head-left" colspan="3">现场照片</td></tr></thead>' +
+        '<tbody>' + photoHtml + '</tbody>' +
+        '</table>' +
+        '<div style="height:2mm"></div>' +
+        '<table class="sign-table">' +
+        '<tr><td>工程负责人：' + escHtml((logItem.personCharge || '').trim()) + '</td>' +
+        '<td style="text-align:right">记录人：' + escHtml((logItem.recorder || '').trim()) + '</td></tr>' +
+        '</table>';
 }
 
 /* ---------- 备份 / 导入 ---------- */
@@ -1956,11 +2060,88 @@ function paintRefs(root) {
     });
 }
 
+/* ---------- 选择导出（全选 / 多选 / 单选） ---------- */
+var selectMode = false;
+var selectedIds = {};
+
+function selectedLogList() {
+    return getLogs().filter(function (l) { return !!selectedIds[l.id]; });
+}
+
+function updateSelBar() {
+    var logs = getLogs();
+    var n = 0;
+    logs.forEach(function (l) { if (selectedIds[l.id]) n++; });
+    var countEl = $('selCount');
+    if (countEl) countEl.textContent = '已选 ' + n + ' / ' + logs.length + ' 条';
+    if ($('selExportBtn')) $('selExportBtn').disabled = n === 0;
+    if ($('selPrintBtn')) $('selPrintBtn').disabled = n === 0;
+    var all = $('selAllChk');
+    if (all) {
+        all.checked = n > 0 && n === logs.length;
+        all.indeterminate = n > 0 && n < logs.length;
+    }
+}
+
+function positionSelectBar() {
+    var tb = document.querySelector('.tab-bar');
+    var bar = document.getElementById('selectBar');
+    if (tb && bar) bar.style.bottom = tb.offsetHeight + 'px';
+}
+
+function toggleSelectMode(force) {
+    selectMode = (typeof force === 'boolean') ? force : !selectMode;
+    selectedIds = {};
+    positionSelectBar();
+    document.body.classList.toggle('selecting', selectMode);
+    $('selectBar').classList.toggle('show', selectMode);
+    var btn = $('selectModeBtn');
+    btn.classList.toggle('active', selectMode);
+    btn.textContent = selectMode ? '✖️退出选择' : '☑️选择导出';
+    renderList();
+    updateSelBar();
+}
+
+function toggleSelected(id) {
+    if (selectedIds[id]) delete selectedIds[id]; else selectedIds[id] = true;
+    var card = document.querySelector('.log-card[data-id="' + id + '"]');
+    if (card) {
+        card.classList.toggle('selected', !!selectedIds[id]);
+        var boxEl = card.querySelector('.sel-box');
+        if (boxEl) boxEl.classList.toggle('on', !!selectedIds[id]);
+    }
+    updateSelBar();
+}
+
+function selectAllLogs(on) {
+    selectedIds = {};
+    if (on) getLogs().forEach(function (l) { selectedIds[l.id] = true; });
+    renderList();
+    updateSelBar();
+}
+
+window.addEventListener('resize', positionSelectBar);
+window.addEventListener('orientationchange', function () { setTimeout(positionSelectBar, 300); });
+
+$('selAllChk').onchange = function () { selectAllLogs(this.checked); };
+$('selExitBtn').onclick = function () { toggleSelectMode(false); };
+$('selExportBtn').onclick = function () {
+    var logs = selectedLogList();
+    if (!logs.length) return;
+    exportDocxList(logs);
+};
+$('selPrintBtn').onclick = function () {
+    var logs = selectedLogList();
+    if (!logs.length) return;
+    printLogs(logs);
+};
+
 function renderList() {
     var box = $('listBox');
     var logs = getLogs();
     if (logs.length === 0) {
         box.innerHTML = '<div class="empty-tip">暂无施工日志记录</div>';
+        updateSelBar();
         return;
     }
     refMap = {};
@@ -1968,7 +2149,9 @@ function renderList() {
     var html = '';
     logs.forEach(function (item) {
         var refs = (item.photos || []).map(toRef).filter(Boolean);
-        html += '<div class="log-card">' +
+        var checked = !!selectedIds[item.id];
+        html += '<div class="log-card' + (selectMode ? ' selectable' + (checked ? ' selected' : '') : '') + '" data-id="' + item.id + '">' +
+            (selectMode ? '<span class="sel-box' + (checked ? ' on' : '') + '"></span>' : '') +
             '<h4 class="log-title" data-id="' + item.id + '">' + escHtml(item.workDate) + ' 施工日志｜' + escHtml(item.project || '') + '</h4>' +
             '<p><b>项目地址：</b>' + escHtml(item.projectAddr || '-') + '</p>' +
             '<p><b>建设单位：</b>' + escHtml(item.buildUnit || '-') + '</p>' +
@@ -1982,16 +2165,25 @@ function renderList() {
             (refs.length ? photoStripHtml(refs) : '') +
             '<p style="margin-top:6px"><b>负责人：</b>' + escHtml(item.personCharge || '-') +
             '　<b>记录人：</b>' + escHtml(item.recorder || '-') + '</p>' +
-            '<div class="btn-row">' +
-            '<button class="edit-btn" data-id="' + item.id + '">✏️ 编辑</button>' +
-            '<button class="docx-btn" data-id="' + item.id + '">📄 导出 Word</button>' +
-            '<button class="print-btn" data-id="' + item.id + '">🖨 打印/存PDF</button>' +
-            '<button class="del-btn danger" data-id="' + item.id + '">删除</button>' +
-            '</div>' +
+            (selectMode ? '<p class="sel-tip">点击卡片选中 / 取消</p>' :
+                '<div class="btn-row">' +
+                '<button class="edit-btn" data-id="' + item.id + '">✏️ 编辑</button>' +
+                '<button class="docx-btn" data-id="' + item.id + '">📄 导出 Word</button>' +
+                '<button class="print-btn" data-id="' + item.id + '">🖨 打印/存PDF</button>' +
+                '<button class="del-btn danger" data-id="' + item.id + '">删除</button>' +
+                '</div>') +
             '</div>';
     });
     box.innerHTML = html;
     paintRefs(box);
+
+    if (selectMode) {
+        Array.prototype.forEach.call(box.querySelectorAll('.log-card.selectable'), function (card) {
+            card.onclick = function () { toggleSelected(Number(card.dataset.id)); };
+        });
+        updateSelBar();
+        return;
+    }
 
     Array.prototype.forEach.call(box.querySelectorAll('.edit-btn, .log-title'), function (btn) {
         btn.onclick = function () { startEdit(Number(btn.dataset.id)); };
