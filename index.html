@@ -377,7 +377,7 @@
             opacity:0;
             pointer-events:none;
             transition:opacity .2s;
-            z-index:60;
+            z-index:80;
             word-break:break-all;
         }
         #toast.show{opacity:1;}
@@ -659,6 +659,7 @@ table.doc-table td.head-left{text-align:left;}
                     <li>批量导出：日志列表点「☑️选择导出」，可单选、多选或全选，点「导出Word」会把选中的日志合并成一个 Word（每条一页，可直接打印装订），也可合并打印/存 PDF。</li>
                     <li>导出 Word 为纯前端现场生成（不依赖任何网络或第三方库），表格严格按施工日志模板：信息表 + 生产记录 + 技术质量安全 + 材料进场 + 现场照片（3 张一行）+ 签字栏。</li>
                     <li>照片在拍照时已压缩（长边 1000px），导出时直接写入文档，不再二次解码，手机内存占用小。</li>
+                    <li>个别照片提示「读取失败」时：多为①照片还在 iCloud 没下载完（先到相册打开一次）②HEIC/ProRAW 等特殊格式（设置→相机→格式 选「兼容性最佳」，或直接截图上传）③照片过大（ProRAW、全景图）。提示里会写明是哪种。</li>
                     <li>导出耗时：生成过程为纯本地计算，电脑实测 0 张 0.4 毫秒、6 张 4.5 毫秒、12 张 8 毫秒；手机约为其 10～20 倍（0.1～0.3 秒），主要时间花在保存文件上。</li>
                     <li>如需纸质打印或 PDF，点日志卡片上的「打印/存PDF」，A4 排版与 Word 一致。</li>
                 </ul>
@@ -1504,41 +1505,146 @@ $('photoInput').onchange = function (e) {
     var files = Array.prototype.slice.call(e.target.files || []);
     e.target.value = "";
     if (!files.length) return;
-    var i = 0;
+    var i = 0, ok = 0, fails = [];
     showBusy('正在处理照片 1/' + files.length + '…');
     (function next() {
-        if (i >= files.length) { hideBusy(); return; }
+        if (i >= files.length) {
+            hideBusy();
+            if (fails.length) {
+                var msg = '已添加 ' + ok + ' 张，' + fails.length + ' 张读取失败。' + fails[0];
+                setTimeout(function () { toast(msg, 9000); }, 300);
+            }
+            return;
+        }
         $('busyText').textContent = '正在处理照片 ' + (i + 1) + '/' + files.length + '…';
-        compressFile(files[i++], function () { next(); });
+        compressFile(files[i++], function (good, reason) {
+            if (good) ok++; else fails.push(reason || '');
+            next();
+        });
     })();
 };
 
 function compressFile(file, done) {
-    var reader = new FileReader();
-    reader.onload = function (ev) {
-        var img = new Image();
-        img.onload = function () {
+    var fname = file && file.name ? file.name : '照片';
+    var ftype = (file && file.type ? file.type : '').toLowerCase();
+    var fsize = file && file.size ? file.size : 0;
+
+    if (ftype && ftype.indexOf('image/') !== 0) {
+        toast('「' + fname + '」不是图片文件（' + ftype + '），请从相册选择照片', 4200);
+        done();
+        return;
+    }
+
+    var url = null;
+    var watchdog = null;
+    var settled = false;
+    function cleanup() {
+        settled = true;
+        if (watchdog) { clearTimeout(watchdog); watchdog = null; }
+        if (url) { URL.revokeObjectURL(url); url = null; }
+    }
+    function sizeText() {
+        if (fsize >= 1048576) return (fsize / 1048576).toFixed(1) + 'MB';
+        if (fsize >= 1024) return Math.round(fsize / 1024) + 'KB';
+        return fsize + 'B';
+    }
+    function explain() {
+        var tail = '（' + (ftype || '未知格式') + '，' + sizeText() + '）';
+        if (ftype.indexOf('heic') >= 0 || ftype.indexOf('heif') >= 0) {
+            return '这张是 HEIC 格式照片，浏览器解码失败。可到「设置→相机→格式」改为「兼容性最佳」再拍，或先截图再上传' + tail;
+        }
+        if (fsize > 15 * 1048576) {
+            return '照片太大（' + sizeText() + '），手机内存不够解码，常见于 ProRAW 或全景图。建议先截图，或用相册编辑裁剪后再上传' + tail;
+        }
+        return '这张照片无法解码，常见原因：照片还在 iCloud 没下载完、格式特殊或文件损坏。请先到相册里打开它、等画面清晰后再回来选择，或直接截图上传' + tail;
+    }
+    function fail() {
+        cleanup();
+        var reason = explain();
+        toast(reason, 6000);
+        done(false, reason);
+    }
+
+    /* 把解码后的图缩到长边 1000px 并转成 JPEG（data URL） */
+    function saveFromSource(src, w, h) {
+        try {
+            if (!w || !h) throw new Error('尺寸读取失败');
+            var scale = Math.min(1, PHOTO_MAX_SIDE / Math.max(w, h));
+            var cw = Math.max(1, Math.round(w * scale));
+            var ch = Math.max(1, Math.round(h * scale));
+            var canvas = document.createElement('canvas');
+            canvas.width = cw;
+            canvas.height = ch;
+            var ctx = canvas.getContext('2d');
+            ctx.drawImage(src, 0, 0, cw, ch);
+            var data = canvas.toDataURL('image/jpeg', PHOTO_QUALITY);
+            canvas.width = canvas.height = 0;
+            if (!data || data.length < 200) throw new Error('压缩结果为空');
+            photos.push({ data: data });
+            renderPhotos();
+            cleanup();
+            done(true);
+        } catch (err) {
+            cleanup();
+            toast('照片处理失败：' + err.message + '。可以先截图再上传', 5000);
+            done(false, '照片处理失败：' + err.message);
+        }
+    }
+
+    /* 第二方案：createImageBitmap 能解一些 <img> 解不了的格式，且更省内存 */
+    function fallbackBitmap() {
+        if (!window.createImageBitmap) { fail(); return; }
+        function handle(bmp) {
+            var w = bmp.width, h = bmp.height;
+            saveFromSource(bmp, w, h);
+            if (bmp.close) bmp.close();
+        }
+        function plain() {
             try {
-                var scale = Math.min(1, PHOTO_MAX_SIDE / Math.max(img.width, img.height));
-                var w = Math.max(1, Math.round(img.width * scale));
-                var h = Math.max(1, Math.round(img.height * scale));
-                var canvas = document.createElement('canvas');
-                canvas.width = w;
-                canvas.height = h;
-                canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-                photos.push({ data: canvas.toDataURL('image/jpeg', PHOTO_QUALITY) });
-                canvas.width = canvas.height = 0;
-                renderPhotos();
-            } catch (err) {
-                toast('照片处理失败：' + err.message);
+                createImageBitmap(file).then(handle).catch(function () { fail(); });
+            } catch (e) {
+                fail();
             }
-            done();
-        };
-        img.onerror = function () { toast('照片读取失败'); done(); };
-        img.src = ev.target.result;
+        }
+        try {
+            /* 大图先让解码器直接缩到 1000px，显著降低内存占用 */
+            createImageBitmap(file, { resizeWidth: PHOTO_MAX_SIDE, resizeQuality: 'high' })
+                .then(handle).catch(plain);
+        } catch (e) {
+            plain();
+        }
+    }
+
+    /* 用 objectURL 解码，比 FileReader 转 base64 省内存，大图更不容易失败 */
+    try {
+        url = URL.createObjectURL(file);
+    } catch (e) {
+        fail();
+        return;
+    }
+    var img = new Image();
+    watchdog = setTimeout(function () {
+        if (settled) return;
+        settled = true;
+        img.onload = null;
+        img.onerror = null;
+        fallbackBitmap();     /* 解码卡住时的兜底 */
+    }, 15000);
+    function settle() {
+        if (settled) return false;
+        settled = true;
+        clearTimeout(watchdog);
+        return true;
+    }
+    img.onload = function () {
+        if (!settle()) return;
+        saveFromSource(img, img.naturalWidth || img.width, img.naturalHeight || img.height);
     };
-    reader.onerror = function () { toast('照片读取失败'); done(); };
-    reader.readAsDataURL(file);
+    img.onerror = function () {
+        if (!settle()) return;
+        fallbackBitmap();
+    };
+    img.src = url;
 }
 
 function renderPhotos() {
